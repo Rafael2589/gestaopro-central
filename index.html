@@ -74,8 +74,10 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 <div id="toast"></div>
 <script>
 /* ===== Conexão do projeto Supabase DA CENTRAL (cole aqui depois de criar o projeto) ===== */
-const CENTRAL_CFG = { url: '', key: '' };   // ex.: url:'https://xxxx.supabase.co', key:'sb_publishable_...'
-const VERSAO = '1.3';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
+// Conexão FIXA com o projeto Supabase da Central (Settings → API Keys). Só a URL e a chave PUBLICÁVEL —
+// nunca a service_role/secret. Com isto preenchido, nenhum computador pede a conexão: vai direto para o login.
+const CENTRAL_CFG = { url: 'https://hpwvrutngzpiimaypijs.supabase.co', key: 'sb_publishable_01v-fzmCQZcobWFgx0zQwA_caQjRi1W' };   // ex.: url:'https://xxxx.supabase.co', key:'sb_publishable_...'
+const VERSAO = '1.4';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
 const CENTRAL_URL_ATUAL = () => (cfg().url || '').replace(/\/+$/,'');
 
 const $ = id => document.getElementById(id);
@@ -103,31 +105,137 @@ const soma = (arr,f) => arr.reduce((t,x)=>t+(+f(x)||0),0);
 const nomeDe = t => t ? ((S.empresas.find(e=>e.tenant===t)||{}).nome || t) : 'Geral (rateado)';
 const diasAte = d => d ? Math.round((new Date(d+'T00:00:00')-hoje())/86400000) : null;
 function toast(m,k){ const t=$('toast'); t.textContent=m; t.className=k==='err'?'err':''; t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.display='none',3500); }
-function cfg(){ try{ const l=JSON.parse(localStorage.getItem('central_cfg')||'null'); if(l&&l.url&&l.key) return l; }catch(e){} return CENTRAL_CFG; }
-let SB=null; function sb(){ if(SB) return SB; const c=cfg(); if(!(c.url&&c.key)||!window.supabase) return null; SB=window.supabase.createClient(c.url,c.key); return SB; }
 function abrirModal(html){ $('modal').innerHTML=html; $('modal-bg').classList.add('open'); }
 function fecharModal(){ $('modal-bg').classList.remove('open'); }
 function gerarChave(){ const a=new Uint8Array(24); crypto.getRandomValues(a); return 'gp_'+Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join(''); }
 function copiar(txt){ try{ navigator.clipboard.writeText(txt); toast('Copiado'); }catch(e){ toast('Selecione e copie manualmente','err'); } }
 
 /* ===== estado ===== */
-const S = { tela:'empresas', empresas:[], sinais:{}, eventos:[], q:'', user:null,
+const S = { tela:'empresas', empresas:[], sinais:{}, eventos:[], q:'', user:null, aal2:false,
   mens:[], custos:[], finOk:true, finErr:'', fin:{ comp:null, aba:'mens' }, rel:'dre', per:{ ini:null, fim:null }, prevN:6, exp:{}, menuAberto:false, mini:(()=>{ try{ return localStorage.getItem('central_menu_mini')==='1'; }catch(e){ return false; } })() };
 
-/* ===== telas de entrada ===== */
-function telaConfig(){ $('app').innerHTML=`<div class="gate"><div class="box"><h2 style="margin:0 0 4px">Central GestãoPro</h2><p class="mut small">Conexão com o projeto Supabase <b>da Central</b> (Settings → API Keys).</p>
+/* ===== acesso (v1.4): conexão fixa + login + autenticador (TOTP) ===== */
+const CFG_FIXA = () => !!(CENTRAL_CFG.url && CENTRAL_CFG.key);
+function cfg(){ if(CFG_FIXA()) return CENTRAL_CFG; try{ const l=JSON.parse(localStorage.getItem('central_cfg')||'null'); if(l&&l.url&&l.key) return l; }catch(e){} return CENTRAL_CFG; }
+// "Manter conectado neste computador": sessão no localStorage; senão no sessionStorage (fecha o navegador = sai)
+const LEMBRAR_KEY='central_lembrar';
+const lembrar = () => { try{ return localStorage.getItem(LEMBRAR_KEY)==='1'; }catch(e){ return false; } };
+const AUTH_STORAGE = {
+  getItem(k){ try{ return (lembrar()?localStorage:sessionStorage).getItem(k); }catch(e){ return null; } },
+  setItem(k,v){ try{ (lembrar()?localStorage:sessionStorage).setItem(k,v); }catch(e){} },
+  removeItem(k){ try{ localStorage.removeItem(k); sessionStorage.removeItem(k); }catch(e){} }
+};
+let SB=null; function sb(){ if(SB) return SB; const c=cfg(); if(!(c.url&&c.key)||!window.supabase) return null;
+  SB=window.supabase.createClient(String(c.url).trim().replace(/\/(rest|auth)\/v1\/?$/,'').replace(/\/+$/,''),c.key,{ auth:{ storage:AUTH_STORAGE, storageKey:'central-gp-auth', persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } }); return SB; }
+
+const INATIVO_MIN = 60;   // sai sozinho depois de 60 min sem mexer
+let _ultAtiv=Date.now(), _timerInat=null;
+function vigiarInatividade(){ ['click','keydown','mousemove','touchstart','scroll'].forEach(ev=>document.addEventListener(ev,()=>{ _ultAtiv=Date.now(); },{ passive:true }));
+  clearInterval(_timerInat); _timerInat=setInterval(()=>{ if(S.user && S.aal2 && Date.now()-_ultAtiv > INATIVO_MIN*60000){ sair('Sessão encerrada por inatividade. Entre de novo.'); } },60000); }
+
+const caixa = inner => `<div class="gate"><div class="box">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><div class="logo">GP</div><div><h2 style="margin:0;font-size:18px">Central GestãoPro</h2><span class="mut small">acesso do dono do sistema</span></div></div>${inner}</div></div>`;
+function telaConfig(){ $('app').innerHTML=caixa(`<p class="mut small">Conexão com o projeto Supabase <b>da Central</b> (Settings → API Keys). Para não pedir isto em outro computador, preencha <span class="mono">CENTRAL_CFG</span> no topo do arquivo.</p>
   <label>Project URL</label><input id="c-url" placeholder="https://xxxx.supabase.co"><label>Chave publicável (sb_publishable_…)</label><input id="c-key">
-  <button class="btn amber" style="width:100%;margin-top:14px" onclick="salvarCfg()">Salvar e continuar</button></div></div>`; }
-function salvarCfg(){ const url=$('c-url').value.trim().replace(/\/+$/,''), key=$('c-key').value.trim(); if(!/^https:\/\//.test(url)||!key){ toast('Informe a URL e a chave','err'); return; } localStorage.setItem('central_cfg',JSON.stringify({url,key})); SB=null; iniciar(); }
-function telaLogin(msg){ $('app').innerHTML=`<div class="gate"><div class="box"><div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><div class="logo" style="width:38px;height:38px;border-radius:9px;background:var(--amber);display:grid;place-items:center;font-weight:900">GP</div><div><h2 style="margin:0;font-size:18px">Central GestãoPro</h2><span class="mut small">acesso do dono do sistema</span></div></div>
-  <label>E-mail</label><input id="l-email" type="email" autocomplete="username"><label>Senha</label><input id="l-senha" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()">
+  <button class="btn amber" style="width:100%;margin-top:14px" onclick="salvarCfg()">Salvar e continuar</button>`); }
+function salvarCfg(){ const url=$('c-url').value.trim().replace(/\/+$/,''), key=$('c-key').value.trim(); if(!/^https:\/\//.test(url)||!key){ toast('Informe a URL e a chave','err'); return; } try{ localStorage.setItem('central_cfg',JSON.stringify({url,key})); }catch(e){} SB=null; iniciar(); }
+
+function telaLogin(msg){ S.user=null; S.aal2=false;
+  $('app').innerHTML=caixa(`<p class="small" style="margin:0 0 4px;color:var(--mut)">Passo 1 de 2 · e-mail e senha</p>
+  <label>E-mail</label><input id="l-email" type="email" autocomplete="username" autofocus>
+  <label>Senha</label><div style="position:relative"><input id="l-senha" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')entrar()" style="padding-right:64px"><button type="button" class="btn sm" style="position:absolute;right:5px;top:5px" onclick="const i=$('l-senha');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'ver':'ocultar'">ver</button></div>
+  <label style="display:flex;gap:6px;align-items:center;font-weight:500;margin-top:10px"><input type="checkbox" id="l-lembrar" style="width:auto" ${lembrar()?'checked':''}> Manter conectado neste computador</label>
   <div id="l-err" style="color:var(--neg);font-size:12.5px;min-height:18px;margin-top:6px">${esc(msg||'')}</div>
-  <button class="btn amber" style="width:100%" onclick="entrar()">Entrar</button>
-  <p class="mut small" style="margin:12px 0 0">Conta criada em Authentication → Users do projeto da Central. <a href="#" onclick="localStorage.removeItem('central_cfg');SB=null;iniciar();return false">Trocar projeto</a></p></div></div>`; }
-async function entrar(){ const c=sb(); if(!c) return telaConfig(); const email=$('l-email').value.trim(), senha=$('l-senha').value; $('l-err').textContent='Entrando…';
-  const { data, error }=await c.auth.signInWithPassword({ email, password:senha }); if(error){ $('l-err').textContent=/invalid/i.test(error.message)?'E-mail ou senha incorretos.':error.message; return; }
-  S.user=data.user; await carregar(); render(); }
-async function sair(){ try{ await sb().auth.signOut(); }catch(e){} S.user=null; telaLogin(); }
+  <button class="btn amber" id="l-btn" style="width:100%" onclick="entrar()">Entrar</button>
+  <p class="mut small" style="margin:12px 0 0">Depois da senha, o código de 6 dígitos do aplicativo autenticador do seu celular é pedido.${CFG_FIXA()?'':` <a href="#" onclick="try{localStorage.removeItem('central_cfg')}catch(e){};SB=null;iniciar();return false">Trocar projeto</a>`}</p>`);
+  setTimeout(()=>{ const e=$('l-email'); if(e) e.focus(); },50); }
+
+async function entrar(){ const c=sb(); if(!c) return telaConfig(); const email=$('l-email').value.trim(), senha=$('l-senha').value;
+  if(!email||!senha){ $('l-err').textContent='Informe e-mail e senha.'; return; }
+  try{ localStorage.setItem(LEMBRAR_KEY, $('l-lembrar').checked?'1':'0'); }catch(e){}
+  $('l-err').textContent='Entrando…'; $('l-btn').disabled=true;
+  const { data, error }=await c.auth.signInWithPassword({ email, password:senha });
+  if(error){ $('l-btn').disabled=false; $('l-err').textContent=/invalid/i.test(error.message)?'E-mail ou senha incorretos.':/rate|many/i.test(error.message)?'Muitas tentativas. Aguarde alguns minutos.':error.message; return; }
+  S.user=data.user; await passoMFA(); }
+
+async function passoMFA(){ const c=sb();
+  const { data:aal, error }=await c.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(error) return telaLogin('Não foi possível conferir o autenticador: '+error.message);
+  if(aal.currentLevel==='aal2'){ S.aal2=true; _ultAtiv=Date.now(); await carregar(); return render(); }
+  const { data:f, error:e2 }=await c.auth.mfa.listFactors();
+  if(e2) return telaLogin(e2.message);
+  const ok=(f.totp||[]).filter(x=>x.status==='verified');
+  return ok.length ? telaCodigo(ok) : telaCadastroAutenticador(f); }
+
+function telaCodigo(fatores, msg){ S.aal2=false;
+  $('app').innerHTML=caixa(`<p class="small" style="margin:0 0 4px;color:var(--mut)">Passo 2 de 2 · autenticador</p>
+  <p style="margin:0 0 6px">Abra o <b>Google Authenticator</b> no celular e digite o código de 6 dígitos da <b>Central GestãoPro</b>.</p>
+  ${fatores.length>1?`<label>Aparelho</label><select id="m-fator">${fatores.map(x=>`<option value="${esc(x.id)}">${esc(x.friendly_name||'Autenticador')}</option>`).join('')}</select>`:`<input type="hidden" id="m-fator" value="${esc(fatores[0].id)}">`}
+  <label>Código</label><input id="m-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="font-size:24px;letter-spacing:8px;text-align:center" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,6);if(this.value.length===6)confirmarCodigo()" onkeydown="if(event.key==='Enter')confirmarCodigo()">
+  <div id="m-err" style="color:var(--neg);font-size:12.5px;min-height:18px;margin-top:6px">${esc(msg||'')}</div>
+  <button class="btn amber" id="m-btn" style="width:100%" onclick="confirmarCodigo()">Confirmar</button>
+  <p class="mut small" style="margin:12px 0 0">Perdeu o celular? No Supabase da Central, em Authentication › Users › seu usuário, apague o fator MFA e entre de novo para cadastrar outro aparelho. · <a href="#" onclick="sair();return false">Usar outra conta</a></p>`);
+  setTimeout(()=>{ const e=$('m-cod'); if(e) e.focus(); },50); }
+
+let _verificando=false;
+async function confirmarCodigo(){ if(_verificando) return; const code=$('m-cod').value.trim(), factorId=$('m-fator').value;
+  if(!/^\d{6}$/.test(code)){ $('m-err').textContent='Digite os 6 dígitos.'; return; }
+  _verificando=true; $('m-btn').disabled=true; $('m-err').textContent='Conferindo…';
+  const { error }=await sb().auth.mfa.challengeAndVerify({ factorId, code });
+  _verificando=false;
+  if(error){ $('m-btn').disabled=false; $('m-cod').value=''; $('m-cod').focus(); $('m-err').textContent=/invalid|expired|code/i.test(error.message)?'Código inválido ou expirado. Espere o próximo código e tente de novo.':error.message; return; }
+  S.aal2=true; _ultAtiv=Date.now(); await carregar(); render(); }
+
+async function iniciarCadastro(){ const c=sb();
+  const { data:f }=await c.auth.mfa.listFactors();
+  for(const x of ((f&&f.all)||[]).filter(x=>x.status==='unverified')){ try{ await c.auth.mfa.unenroll({ factorId:x.id }); }catch(e){} }
+  const nome='Celular '+new Date().toLocaleString('pt-BR').replace(/[/:, ]+/g,'-');
+  return c.auth.mfa.enroll({ factorType:'totp', friendlyName:nome, issuer:'Central GestãoPro' }); }
+function qrSrc(q){ q=String(q||''); const pre='data:image/svg+xml;utf-8,';   // o Supabase pode devolver o SVG puro ou já como data URL
+  if(q.startsWith(pre)) q=q.slice(pre.length); else if(q.startsWith('data:')) return q;
+  return pre+encodeURIComponent(q); }
+function blocoQR(d){ return `<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:8px 0">
+    <img src="${esc(qrSrc(d.totp.qr_code))}" alt="QR code do autenticador" style="width:180px;height:180px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px">
+    <div class="small" style="flex:1;min-width:180px"><b>Não consegue ler o QR?</b> No Google Authenticator toque em <b>+</b> › <b>Inserir chave de configuração</b>, nome "Central GestãoPro", tipo <b>Baseada no tempo</b>, e digite a chave:<div class="mono" style="word-break:break-all;background:#f1f5f9;padding:6px 8px;border-radius:6px;margin-top:4px;user-select:all">${esc(d.totp.secret)}</div></div></div>`; }
+async function telaCadastroAutenticador(){
+  $('app').innerHTML=caixa('<p class="mut">Preparando o autenticador…</p>');
+  const { data:d, error }=await iniciarCadastro();
+  if(error) return telaLogin(/disabled|not enabled/i.test(error.message)?'O autenticador (MFA TOTP) está desligado no Supabase da Central: Authentication › Multi-Factor › TOTP → Enabled.':'Autenticador: '+error.message);
+  $('app').innerHTML=caixa(`<p class="small" style="margin:0 0 4px;color:var(--mut)">Passo 2 de 2 · cadastrar autenticador (só na primeira vez)</p>
+  <ol class="steps small" style="padding-left:18px;margin:4px 0">
+    <li>Instale no celular o <b>Google Authenticator</b> (Play Store / App Store).</li>
+    <li>Abra o app e toque em <b>+</b> (ou <b>Adicionar um código</b>) › <b>Ler código QR</b> e aponte para o QR abaixo.</li>
+    <li>Digite o código de 6 dígitos que aparece em <b>Central GestãoPro</b>.</li></ol>
+  ${blocoQR(d)}
+  <input type="hidden" id="m-fator" value="${esc(d.id)}">
+  <label>Código do aplicativo</label><input id="m-cod" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="font-size:24px;letter-spacing:8px;text-align:center" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,6);if(this.value.length===6)confirmarCodigo()" onkeydown="if(event.key==='Enter')confirmarCodigo()">
+  <div id="m-err" style="color:var(--neg);font-size:12.5px;min-height:18px;margin-top:6px"></div>
+  <button class="btn amber" id="m-btn" style="width:100%" onclick="confirmarCodigo()">Ativar e entrar</button>
+  <p class="mut small" style="margin:10px 0 0">Guarde o celular: a partir de agora ele é pedido em todo acesso. <a href="#" onclick="sair();return false">Cancelar</a></p>`); }
+
+async function sair(msg){ try{ await sb().auth.signOut(); }catch(e){} try{ AUTH_STORAGE.removeItem('central-gp-auth'); }catch(e){} S.user=null; S.aal2=false; telaLogin(typeof msg==='string'?msg:''); }
+
+/* ---- segurança da conta (menu › Segurança) ---- */
+async function modalSeguranca(){ const { data:f, error }=await sb().auth.mfa.listFactors(); if(error){ toast(error.message,'err'); return; }
+  const lista=(f.totp||[]).filter(x=>x.status==='verified');
+  abrirModal(`<h3>Segurança da conta</h3>
+   <p class="small mut" style="margin:0 0 8px">${esc(S.user.email||'')} · sessão ${lembrar()?'mantida neste computador':'encerra ao fechar o navegador'} · sai sozinha após ${INATIVO_MIN} min sem uso.</p>
+   <h4 style="margin:10px 0 6px">Aparelhos autenticadores</h4>
+   <table><tbody>${lista.map(x=>`<tr><td><b>${esc(x.friendly_name||'Autenticador')}</b><div class="mut small">cadastrado em ${fDH(x.created_at)}</div></td><td style="text-align:right"><button class="btn sm neg" onclick="removerFator('${esc(x.id)}',${lista.length})">Remover</button></td></tr>`).join('')||'<tr><td class="mut">Nenhum.</td></tr>'}</tbody></table>
+   <div id="seg-novo" style="margin-top:10px"><button class="btn" onclick="novoFator()">+ Cadastrar outro celular (reserva)</button></div>
+   <h4 style="margin:16px 0 6px">Trocar senha</h4>
+   <div class="row"><div><label>Nova senha (mín. 10 caracteres)</label><input id="s-nova" type="password" autocomplete="new-password"></div><div><label>Repita</label><input id="s-rep" type="password" autocomplete="new-password"></div></div>
+   <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px;flex-wrap:wrap"><button class="btn amber" onclick="trocarSenha()">Salvar nova senha</button><button class="btn" onclick="fecharModal()">Fechar</button></div>`); }
+async function novoFator(){ const { data:d, error }=await iniciarCadastro(); if(error){ toast(error.message,'err'); return; }
+  $('seg-novo').innerHTML=`<div class="card" style="background:#f8fafc;margin:0">No celular reserva, leia o QR code e digite o código:${blocoQR(d)}
+    <div style="display:flex;gap:6px"><input id="seg-cod" inputmode="numeric" maxlength="6" placeholder="000000" style="max-width:160px;letter-spacing:4px"><button class="btn amber" onclick="confirmarNovoFator('${esc(d.id)}')">Confirmar</button></div></div>`; }
+async function confirmarNovoFator(id){ const code=$('seg-cod').value.replace(/\D/g,''); const { error }=await sb().auth.mfa.challengeAndVerify({ factorId:id, code });
+  if(error){ toast('Código inválido ou expirado','err'); return; } toast('Celular reserva cadastrado'); modalSeguranca(); }
+async function removerFator(id,total){ if(!confirm(total<=1?'Remover o ÚNICO autenticador? No próximo acesso será preciso cadastrar outro.':'Remover este aparelho autenticador?')) return;
+  const { error }=await sb().auth.mfa.unenroll({ factorId:id }); if(error){ toast(error.message,'err'); return; } toast('Aparelho removido'); modalSeguranca(); }
+async function trocarSenha(){ const a=$('s-nova').value, b=$('s-rep').value;
+  if(a.length<10){ toast('Use pelo menos 10 caracteres','err'); return; } if(a!==b){ toast('As senhas não conferem','err'); return; }
+  const { error }=await sb().auth.updateUser({ password:a }); if(error){ toast(error.message,'err'); return; } $('s-nova').value=$('s-rep').value=''; toast('Senha alterada'); }
 
 /* ===== dados ===== */
 async function carregar(){ const c=sb(); if(!c) return;
@@ -148,7 +256,7 @@ function spark(hist){ const h=(hist||[]).slice(-14).map(x=>+x.vendas_mes||0); if
   return `<svg class="spark" width="${w}" height="${hh}" viewBox="0 0 ${w} ${hh}"><polyline fill="none" stroke="#2563eb" stroke-width="1.5" points="${pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}"/></svg>`; }
 
 /* ===== render ===== */
-function render(){ if(!S.user) return telaLogin();
+function render(){ if(!S.user) return telaLogin(); if(!S.aal2) return passoMFA();
   const vivas=S.empresas.filter(e=>!e.cancelado_em);
   const ativas=vivas.filter(e=>!situacao(e).bloq && e.status!=='teste').length, teste=vivas.filter(e=>e.status==='teste'&&!situacao(e).bloq).length, bloq=vivas.filter(e=>situacao(e).bloq).length, venc=vivas.filter(e=>{ const s=situacao(e); return !s.bloq && s.dias!=null && s.dias<=10; }).length;
   const mrr=mrrAtual();   // só lojas pagantes (fora teste, não bloqueadas)
@@ -691,6 +799,7 @@ const ICO = {
   acomp:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   eventos:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
   atualizar:'<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
+  seguranca:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   sair:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
   recolher:'<path d="M15 18l-6-6 6-6"/>', expandir:'<path d="M9 18l6-6-6-6"/>', seta:'<path d="M9 18l6-6-6-6"/>'
 };
@@ -718,6 +827,7 @@ function menuLateral(){ const ga=grupoAtivo();
     <nav aria-label="Menu principal">${itens}</nav>
     <div class="rodape">
       <button class="mi" title="Atualizar dados" onclick="carregar().then(render)">${svg('atualizar')}<span class="txt">Atualizar dados</span></button>
+      <button class="mi" title="Segurança da conta" onclick="modalSeguranca()">${svg('seguranca')}<span class="txt">Segurança</span></button>
       <button class="mi btn-recolher" title="${S.mini?'Expandir menu':'Recolher menu'}" onclick="menuMini()">${svg(S.mini?'expandir':'recolher')}<span class="txt">Recolher menu</span></button>
       <button class="mi" title="Sair" onclick="sair()">${svg('sair')}<span class="txt">Sair</span></button>
     </div></aside>`; }
@@ -740,7 +850,9 @@ function migalha(){ const g=grupoAtivo(); const it=menuItens().find(x=>x.k===g)|
 /* ===== início ===== */
 async function iniciar(){ const c=cfg(); if(!(c.url&&c.key)) return telaConfig(); if(!window.supabase){ $('app').innerHTML='<div class="gate"><div class="box">A biblioteca do Supabase não carregou (sem internet?).</div></div>'; return; }
   const client=sb(); try{ const { data }=await client.auth.getSession(); S.user=data&&data.session&&data.session.user||null; }catch(e){ S.user=null; }
-  if(!S.user) return telaLogin(); await carregar(); render(); }
+  vigiarInatividade();
+  client.auth.onAuthStateChange((ev)=>{ if(ev==='SIGNED_OUT' && S.aal2){ S.user=null; S.aal2=false; telaLogin('Sua sessão terminou. Entre de novo.'); } });
+  if(!S.user) return telaLogin(); return passoMFA(); }
 iniciar();
 </script>
 </body>
