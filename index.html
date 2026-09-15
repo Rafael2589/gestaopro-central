@@ -68,6 +68,26 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 /* v1.5 */
 .strip{display:inline-flex;gap:1px;vertical-align:middle}.strip i{display:inline-block;width:6px;height:14px;border-radius:2px;background:#e2e8f0}.strip i.on{background:var(--pos)}
 @media print{body:has(#modal-bg.open) #app{display:none}#modal-bg.open{position:static;background:none;padding:0}#modal-bg.open .modal{max-height:none;box-shadow:none}#modal-bg.open .btn{display:none}}
+/* v1.6 — relatório analítico */
+.bi-banner{display:flex;align-items:center;gap:18px;padding:18px 22px;border-radius:16px;cursor:pointer;margin-bottom:16px;background:linear-gradient(120deg,#0f1f3a,#1e3a5f);color:#fff;box-shadow:0 4px 14px rgba(15,23,42,.12);transition:.16s;border:1px solid rgba(255,255,255,.06)}
+.bi-banner:hover,.bi-banner:focus-visible{transform:translateY(-2px);box-shadow:0 12px 28px rgba(15,31,58,.28);outline:none}
+.bi-ico{width:48px;height:48px;border-radius:12px;display:grid;place-items:center;background:rgba(245,158,11,.2);flex:none}
+.bi-ico svg{width:26px;height:26px;fill:none;stroke:var(--amber);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bi-tx{flex:1;min-width:0}.bi-tx h3{font-size:17px;font-weight:700;margin:0;letter-spacing:-.2px}.bi-tx p{font-size:13px;opacity:.8;margin:3px 0 0}
+.bi-go{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);padding:9px 15px;border-radius:9px;white-space:nowrap}
+.bi-go svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:640px){.bi-banner{flex-wrap:wrap}.bi-go{margin-left:auto}}
+.an-capa{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:linear-gradient(120deg,#0f1f3a,#1e3a5f);color:#fff;border-radius:16px;padding:20px 22px;margin-bottom:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.an-capa small{color:#94a3b8;font-size:12px}.an-capa h2{margin:2px 0 4px;font-size:22px}.an-capa p{margin:0;color:#cbd5e1;font-size:13px}
+.an-tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.an-tiles>div{background:#fff}.an-tiles>div>div{background:none;border:0;padding:0;margin-top:2px}
+.an-ins{display:grid;gap:8px}.an-i{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-radius:10px;border:1px solid var(--line);border-left-width:4px;font-size:13.5px;line-height:1.5;break-inside:avoid}
+.an-ic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:#fff;margin-top:1px}
+.an-i.alerta{border-left-color:var(--neg);background:#fef2f2}.an-i.alerta .an-ic{background:var(--neg)}
+.an-i.atencao{border-left-color:var(--amber);background:#fffbeb}.an-i.atencao .an-ic{background:var(--amber-d)}
+.an-i.bom{border-left-color:var(--pos);background:#f0fdf4}.an-i.bom .an-ic{background:var(--pos)}
+.an-i.info{border-left-color:#94a3b8;background:#f8fafc}.an-i.info .an-ic{background:#64748b}
+.an-acoes{margin:0;padding-left:22px}.an-acoes li{margin:5px 0;line-height:1.5}.an-acoes li.alerta::marker{color:var(--neg);font-weight:800}.an-acoes li.atencao::marker{color:var(--amber-d);font-weight:800}
+@media print{.an-i,.an-tiles>div{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media(min-width:1600px){.kpis{grid-template-columns:repeat(8,minmax(0,1fr))}}@media(max-width:640px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
@@ -80,7 +100,7 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 // Conexão FIXA com o projeto Supabase da Central (Settings → API Keys). Só a URL e a chave PUBLICÁVEL —
 // nunca a service_role/secret. Com isto preenchido, nenhum computador pede a conexão: vai direto para o login.
 const CENTRAL_CFG = { url: 'https://hpwvrutngzpiimaypijs.supabase.co', key: 'sb_publishable_01v-fzmCQZcobWFgx0zQwA_caQjRi1W' };   // ex.: url:'https://xxxx.supabase.co', key:'sb_publishable_...'
-const VERSAO = '1.5';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
+const VERSAO = '1.6';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
 const CENTRAL_URL_ATUAL = () => (cfg().url || '').replace(/\/+$/,'');
 
 const $ = id => document.getElementById(id);
@@ -269,7 +289,7 @@ function render(){ if(!S.user) return telaLogin(); if(!S.aal2) return passoMFA()
    <div class="topo"><button class="hamb" onclick="S.menuAberto=true;render()" aria-label="Abrir menu">☰</button><div class="crumb">${migalha()}</div></div>
    <main>
     <div class="kpis noprint"><div class="kpi"><small>Lojas</small><b>${vivas.length}</b></div><div class="kpi"><small>Ativas</small><b style="color:var(--pos)">${ativas}</b></div><div class="kpi"><small>Em teste</small><b style="color:var(--info)">${teste}</b></div><div class="kpi"><small>Vencendo (10 dias)</small><b style="color:var(--amber-d)">${venc}</b></div><div class="kpi"><small>Suspensas / vencidas</small><b style="color:var(--neg)">${bloq}</b></div><div class="kpi"><small>Receita mensal (MRR)</small><b>${BRL(mrr)}</b></div><div class="kpi"><small>Sem sinal há 7 dias</small><b style="color:${semSinal?'var(--neg)':'inherit'}">${semSinal}</b></div>${atraso!=null?`<div class="kpi" style="cursor:pointer" onclick="S.tela='rel';S.rel='inad';render()" title="Ver inadimplência"><small>Mensalidades em atraso</small><b style="color:${atraso?'var(--neg)':'inherit'}">${BRL(atraso)}</b></div>`:''}</div>
-    <div id="tela">${({empresas:telaEmpresas, fin:telaFinanceiro, rel:telaRelatorios, sup:telaSuporte, acomp:telaAcomp, eventos:telaEventos})[S.tela]()}</div>
+    <div id="tela">${({empresas:telaEmpresas, fin:telaFinanceiro, rel:telaRelatorios, analitico:telaAnalitico, sup:telaSuporte, acomp:telaAcomp, eventos:telaEventos})[S.tela]()}</div>
    </main></div></div>`; }
 function telaEmpresas(){ const q=S.q.toLowerCase(); const lista=S.empresas.filter(e=>!q||(e.nome+' '+e.tenant+' '+(e.cidade||'')+' '+(e.contato||'')).toLowerCase().includes(q));
   return `<div class="toolbar"><input placeholder="Buscar loja, cidade, contato…" value="${esc(S.q)}" oninput="S.q=this.value;$('tela').innerHTML=telaEmpresas()"><button class="btn amber" onclick="formEmpresa()">+ Nova empresa</button></div>
@@ -800,6 +820,135 @@ function fechVer(c){ const f=S.fech.find(x=>x.competencia===c); if(!f) return; c
    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="window.print()">Imprimir</button><button class="btn" onclick="fecharModal()">Fechar</button></div>`); }
 
 /* =====================================================================
+   RELATÓRIO ANALÍTICO (v1.6) — mensal ou por período, com resumo automático
+   ===================================================================== */
+const MESES_EXT = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesExt = c => { const [a,m]=c.split('-'); return MESES_EXT[+m-1]+' de '+a; };
+const perExt = (ini,fim) => ini===fim ? mesExt(ini) : ymNome(ini)+' a '+ymNome(fim);
+const ICO_BULB='<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z"/>';
+function bannerAnalitico(){ return `<div class="bi-banner noprint" onclick="analiticoModal()" role="button" tabindex="0" onkeydown="if(event.key==='Enter')analiticoModal()">
+    <div class="bi-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO_BULB}</svg></div>
+    <div class="bi-tx"><h3>Relatório Analítico</h3><p>Resumo automático do mês ou de um período: receita, resultado, cobrança, clientes, uso, suporte, riscos e próximos passos — tudo em uma página para imprimir.</p></div>
+    <span class="bi-go">Abrir <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9"/></svg></span></div>`; }
+function analiticoModal(){ const ant=ymAdd(ymHoje(),-1); const a=S.ana||{ tipo:'mes', ini:ant, fim:ant };
+  abrirModal(`<h3>Relatório Analítico</h3><p class="mut small" style="margin:0 0 8px">Escolha o mês ou o período. O relatório compara com o período anterior do mesmo tamanho.</p>
+   <div class="subnav" style="margin:6px 0 4px"><button id="an-t-mes" class="${a.tipo==='mes'?'on':''}" onclick="anTipo('mes')">Mensal</button><button id="an-t-per" class="${a.tipo==='per'?'on':''}" onclick="anTipo('per')">Por período</button></div>
+   <div id="an-mes" ${a.tipo==='mes'?'':'hidden'}><label>Mês</label><input id="an-m" type="month" value="${a.ini}" max="${ymHoje()}">
+     <div class="per" style="margin-top:8px">${[['Mês atual',0],['Mês passado',-1],['Retrasado',-2]].map(([l,n])=>`<button class="btn sm" onclick="$('an-m').value=ymAdd(ymHoje(),${n})">${l}</button>`).join('')}</div></div>
+   <div id="an-per" ${a.tipo==='per'?'':'hidden'}><div class="row"><div><label>De</label><input id="an-i" type="month" value="${a.ini}"></div><div><label>Até</label><input id="an-f" type="month" value="${a.fim}" max="${ymHoje()}"></div></div>
+     <div class="per" style="margin-top:8px">${[['Últimos 3 meses',-2,0],['Últimos 6 meses',-5,0],['Últimos 12 meses',-11,0]].map(([l,i,f])=>`<button class="btn sm" onclick="$('an-i').value=ymAdd(ymHoje(),${i});$('an-f').value=ymAdd(ymHoje(),${f})">${l}</button>`).join('')}
+     <button class="btn sm" onclick="$('an-i').value=ymHoje().slice(0,4)+'-01';$('an-f').value=ymHoje()">Este ano</button><button class="btn sm" onclick="const y=(+ymHoje().slice(0,4)-1);$('an-i').value=y+'-01';$('an-f').value=y+'-12'">Ano passado</button></div></div>
+   <input type="hidden" id="an-tipo" value="${a.tipo}">
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="analiticoGerar()">Gerar relatório</button></div>`); }
+function anTipo(t){ $('an-tipo').value=t; $('an-mes').hidden=t!=='mes'; $('an-per').hidden=t!=='per'; $('an-t-mes').className=t==='mes'?'on':''; $('an-t-per').className=t==='per'?'on':''; }
+function analiticoGerar(){ const t=$('an-tipo').value; let ini, fim;
+  if(t==='mes'){ ini=fim=$('an-m').value; } else { ini=$('an-i').value; fim=$('an-f').value; }
+  if(!/^\d{4}-\d{2}$/.test(ini||'')||!/^\d{4}-\d{2}$/.test(fim||'')){ toast('Escolha o período','err'); return; }
+  if(ini>fim){ const x=ini; ini=fim; fim=x; }
+  if(ymLista(ini,fim).length>36){ toast('Período máximo: 36 meses','err'); return; }
+  S.ana={ tipo:t, ini, fim }; fecharModal(); S.tela='analitico'; S.menuAberto=false; render(); try{ window.scrollTo(0,0); }catch(e){} }
+
+function comPer(ini,fim,fn){ const s={ ini:S.per.ini, fim:S.per.fim }; S.per.ini=ini; S.per.fim=fim; try{ return fn(); } finally { S.per.ini=s.ini; S.per.fim=s.fim; } }
+function dadosAnalise(ini,fim){ const meses=ymLista(ini,fim), antes=ymAdd(ini,-1);
+  const d={ ini, fim, meses:meses.length };
+  if(S.finOk){ const t=comPer(ini,fim,relDRE).blocos[1].total; Object.assign(d,{ fat:t.fat, rec:t.rec, imp:t.imp, dir:t.dir, ger:t.ger, ct:t.ct, res:t.res, marg:t.marg, caixa:t.caixa });
+    const pg=pagosEntre(ini+'-01',ymFimISO(fim)); d.pagos=pg.length; d.emDia=pg.length?pg.filter(m=>m.pago_em<=m.vencimento).length/pg.length:null;
+    d.lojas=comPer(ini,fim,relLojas).blocos[1].rows.filter(r=>r.plano!==undefined);
+    d.cats=comPer(ini,fim,relCustos).blocos[1].rows; }
+  const sa=comPer(ini,fim,relSaaS); const rs=sa.blocos[1].rows; const ult=rs[rs.length-1]||{};
+  d.mrrIni=soma(ativosEm(antes),e=>S.gerOk?valorEm(e,antes):(+e.valor_mensal||0)); d.mrrFim=ult.mrr||0; d.ativos=ult.ativos||0;
+  d.novos=soma(rs,r=>r.novos); d.canc=soma(rs,r=>r.canc); d.exp=soma(rs,r=>r.exp||0); d.contr=soma(rs,r=>r.contr||0); d.mperd=soma(rs,r=>r.mperd);
+  d.nrr=d.mrrIni?(d.mrrIni+d.exp-d.contr-d.mperd)/d.mrrIni:null; d.cancLista=sa.blocos[2].rows;
+  if(S.gerOk){ const L=atendPeriodo(ini+'-01',ymFimISO(fim)); d.atend=L.length; d.minSup=soma(L,a=>a.minutos); d.custoSup=valorHora()?d.minSup/60*valorHora():null;
+    const pm={}; L.forEach(a=>{ pm[a.motivo]=(pm[a.motivo]||0)+(+a.minutos||0); }); d.topMotivo=Object.entries(pm).sort((a,b)=>b[1]-a[1])[0]||null;
+    const pl={}; L.forEach(a=>{ if(a.tenant) pl[a.tenant]=(pl[a.tenant]||0)+(+a.minutos||0); }); d.topSup=Object.entries(pl).sort((a,b)=>b[1]-a[1])[0]||null;
+    d.uso=comPer(ini,fim,relUso).blocos[0].rows; const up=d.uso.filter(r=>r.periodo>0 && r.sit.t!=='encerrada'); d.usoMedio=up.length?soma(up,r=>r.pct)/up.length:null;
+    d.contratos=comPer(ini,fim,relContratos).blocos[0].rows; }
+  return d; }
+const varPct = (a,b) => (a==null||b==null||!isFinite(a)||!isFinite(b)||b===0) ? null : (a-b)/Math.abs(b);
+function setaVar(v, bomSobe, pp){ if(v==null||!isFinite(v)) return '<span class="mut">—</span>'; if(Math.abs(v)<0.0005) return '<span class="mut">= estável</span>';
+  const sobe=v>0, bom=bomSobe==null?null:(sobe===bomSobe); const cor=bom==null?'var(--mut)':(bom?'var(--pos)':'var(--neg)');
+  const txt=pp?(v*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+' p.p.':PCT(Math.abs(v)); return `<b style="color:${cor}">${sobe?'▲':'▼'} ${pp&&sobe?'+':''}${txt}</b>`; }
+
+function insightsAnalise(a,p,rotAnt){ const I=[]; const add=(nivel,texto,acao)=>I.push({ nivel, texto, acao });
+  const nomeT=t=>nomeDe(t);
+  if(S.finOk){
+    const vf=varPct(a.fat,p.fat);
+    if(!a.fat) add('atencao','Nenhuma mensalidade faturada no período.','Gerar as mensalidades em Financeiro › Mensalidades.');
+    else if(vf==null) add('info',`Receita faturada de <b>${BRL(a.fat)}</b> (sem faturamento no período anterior para comparar).`);
+    else add(vf>=0.02?'bom':vf<=-0.05?'alerta':'info',`Receita faturada de <b>${BRL(a.fat)}</b> — ${setaVar(vf,true)} em relação a ${rotAnt} (${BRL(p.fat)}).`, vf<=-0.05?'Entender a queda: cancelamentos, descontos ou mensalidades não geradas.':null);
+    if(a.fat){ if(a.res<0) add('alerta',`<b>Prejuízo de ${BRL(-a.res)}</b> no período (custos de ${BRL(a.ct)}).`,'Rever os custos da operação e o preço das mensalidades.');
+      else add(a.marg<0.3?'atencao':'bom',`Resultado de <b>${BRL(a.res)}</b>, margem de <b>${PCT(a.marg)}</b> ${p.marg!=null?'('+setaVar(a.marg-p.marg,true,true)+' vs '+rotAnt+')':''}.`, a.marg<0.3?'Margem abaixo de 30%: revisar custos ou reajustar planos.':null); }
+    if(a.fat){ const cob=a.rec/a.fat; add(cob<0.8?'atencao':cob>=0.95?'bom':'info',`Entrou no caixa <b>${BRL(a.rec)}</b> — ${PCT(cob)} do faturado.${a.emDia!=null?' '+PCT(a.emDia)+' dos pagamentos chegaram em dia.':''}`, cob<0.8?'Cobrar as mensalidades em aberto (Relatórios › Inadimplência).':null); }
+    const atr=mensAtrasadas(); if(atr.length){ const pl={}; atr.forEach(m=>{ pl[m.tenant]=(pl[m.tenant]||0)+(+m.valor||0); }); const top=Object.entries(pl).sort((x,y)=>y[1]-x[1])[0];
+      add('alerta',`<b>${BRL(soma(atr,m=>m.valor))}</b> em mensalidades atrasadas hoje (${atr.length}), a maior parte com <b>${esc(nomeT(top[0]))}</b> (${BRL(top[1])}).`,'Ligar para '+esc(nomeT(top[0]))+' e combinar o pagamento; suspender se passar da carência.'); }
+    else add('bom','Nenhuma mensalidade em atraso hoje.');
+    const lj=(a.lojas||[]).filter(r=>r.fat>0); const tot=soma(lj,r=>r.fat);
+    if(lj.length>1){ const top=lj.slice().sort((x,y)=>y.fat-x.fat)[0]; const part=top.fat/tot; if(part>0.5) add('atencao',`<b>${esc(top.loja)}</b> concentra ${PCT(part)} da receita — dependência alta de um cliente.`,'Buscar novos clientes para diluir o risco.'); }
+    lj.filter(r=>r.res2!=null && r.res2<0).forEach(r=>add('atencao',`<b>${esc(r.loja)}</b> dá prejuízo depois do suporte (${BRL(r.res2)}; ${HMIN(r.horas*60)} de atendimento).`,'Revisar o plano/valor de '+esc(r.loja)+' ou treinar a equipe para reduzir chamados.'));
+    if(a.cats&&a.cats.length){ const c0=a.cats[0]; const vc=varPct(a.ct,p.ct); add(vc!=null&&vc>0.15?'atencao':'info',`Custos de <b>${BRL(a.ct)}</b> ${vc!=null?'('+setaVar(vc,false)+')':''}; maior peso: <b>${esc(c0.cat)}</b> (${PCT(c0.pct)}).`, vc!=null&&vc>0.15?'Custos subiram mais de 15%: conferir os lançamentos de '+esc(c0.cat)+'.':null); }
+  }
+  const vm=varPct(a.mrrFim,a.mrrIni);
+  add(vm==null?'info':vm>=0?'bom':'alerta',`Receita mensal recorrente (MRR) terminou em <b>${BRL(a.mrrFim)}</b>${vm!=null?' — '+setaVar(vm,true)+' no período':''}${a.nrr!=null?'; retenção de receita (NRR) de <b>'+PCT(a.nrr)+'</b>':''}.`, vm!=null&&vm<0?'Recuperar receita: reativar clientes e revisar descontos.':null);
+  if(a.novos||a.canc) add(a.canc>a.novos?'alerta':'bom',`<b>${a.novos}</b> cliente(s) novo(s) e <b>${a.canc}</b> cancelamento(s)${a.cancLista&&a.cancLista.length?' ('+a.cancLista.map(c=>esc(c.loja)+(c.motivo?': '+esc(c.motivo):'')).join('; ')+')':''}. Clientes ativos no fim: <b>${a.ativos}</b>.`, a.canc>a.novos?'Cancelamentos superaram as vendas: priorizar retenção e prospecção.':null);
+  else add('info',`Nenhum cliente novo nem cancelamento. Clientes ativos no fim: <b>${a.ativos}</b>.`,'Prospectar novos clientes (meta sugerida: 1 por mês).');
+  const testes=S.empresas.filter(e=>!e.cancelado_em && e.status==='teste'); if(testes.length) add('info',`<b>${testes.length}</b> loja(s) em teste: ${testes.map(e=>esc(e.nome)+(e.vence_em?' (até '+fD(e.vence_em)+')':'')).join(', ')}.`,'Acompanhar o uso das lojas em teste e fazer a proposta antes do fim do teste.');
+  const venc=S.empresas.filter(e=>{ const s=situacao(e); return !s.enc && !s.bloq && e.vence_em && s.dias!=null && s.dias<=10; }); if(venc.length) add('atencao',`Licença vencendo em até 10 dias: ${venc.map(e=>esc(e.nome)+' ('+fD(e.vence_em)+')').join(', ')}.`,'Renovar ou cobrar antes do vencimento.');
+  if(S.gerOk){
+    if(a.contratos&&a.contratos.length){ const r=a.contratos.filter(c=>c._t==='reajuste').length, dn=a.contratos.filter(c=>c._t==='downgrade').length;
+      add(dn?'atencao':'info',`${a.contratos.length} mudança(s) de contrato no período (${r} reajuste(s)${dn?', '+dn+' downgrade(s)':''}); expansão ${BRL(a.exp)}, contração ${BRL(a.contr)}.`, dn?'Entender o motivo dos downgrades.':null); }
+    if(a.uso){ const par=a.uso.filter(r=>r._sem>=7 && r.sit.t!=='encerrada' && r.sit.t!=='teste'); if(par.length) add('alerta',`Sem usar o sistema há 7+ dias: ${par.map(r=>'<b>'+esc(r.loja)+'</b>'+(r.ult?' (último uso '+fD(r.ult)+')':' (nunca)')).join(', ')}.`,'Ligar para as lojas paradas — é o primeiro sinal de cancelamento.');
+      const top=a.uso.filter(r=>r.dias>0).sort((x,y)=>y.pct-x.pct)[0]; if(top) add('bom',`Loja que mais usa: <b>${esc(top.loja)}</b> — ${top.dias} dia(s) de uso (${PCT(top.pct)} do período)${top.vendas?', '+BRL(top.vendas)+' em vendas':''}.`);
+      if(!S.uso.length) add('info','Ainda não há dados de uso diário.','Publicar de novo a função "licenca" da Central (v1.5).'); }
+    if(a.atend){ const vs=varPct(a.minSup,p.minSup); add(vs!=null&&vs>0.3?'atencao':'info',`<b>${a.atend}</b> atendimento(s), <b>${HMIN(a.minSup)}</b> de suporte${a.custoSup!=null?' (≈ '+BRL(a.custoSup)+')':''}${vs!=null?' — '+setaVar(vs,false)+' vs '+rotAnt:''}${a.topSup?'; quem mais precisou: <b>'+esc(nomeDe(a.topSup[0]))+'</b> ('+HMIN(a.topSup[1])+')':''}${a.topMotivo?'; principal motivo: '+esc(nomeDeLista(MOTIVOS,a.topMotivo[0])):''}.`,
+        (a.topMotivo&&['duvida','treinamento'].includes(a.topMotivo[0]))?'Muitas dúvidas de uso: criar um material de treinamento ou vídeo curto.':(a.topMotivo&&a.topMotivo[0]==='erro')?'Muitos erros: priorizar correções no sistema.':null); }
+    else add('info','Nenhum atendimento de suporte registrado no período.', S.atend.length?null:'Registrar os atendimentos em Suporte para medir o custo de cada loja.');
+    const ab=S.atend.filter(x=>x.situacao==='aberto'); if(ab.length) add('atencao',`${ab.length} atendimento(s) em aberto (o mais antigo de ${fD(ab.map(x=>x.data).sort()[0])}).`,'Resolver os atendimentos pendentes.');
+    if(!valorHora()) add('info','O valor da sua hora de suporte não está definido — o custo do suporte não entra nas contas.','Definir em Suporte › Atendimentos.');
+    const hj=ymHoje(); const abertos=ymLista(a.ini,a.fim).filter(c=>c<hj && !S.fech.some(f=>f.competencia===c)); if(abertos.length) add('atencao',`Mês(es) encerrado(s) ainda não fechado(s): ${abertos.map(ymNome).join(', ')}.`,'Conferir e fechar em Financeiro › Fechamento do mês.');
+  }
+  const sd=relSaude().blocos[0].rows.filter(r=>r._cls==='risco'); if(sd.length) add('alerta',`Em risco de cancelamento hoje: ${sd.map(r=>'<b>'+esc(r.loja)+'</b> ('+esc(r.mot)+')').join('; ')}.`,'Contato imediato com as lojas em risco.');
+  const ordem={ alerta:0, atencao:1, bom:2, info:3 }; return I.sort((x,y)=>ordem[x.nivel]-ordem[y.nivel]); }
+
+function telaAnalitico(){ const A=S.ana; if(!A){ return `<div class="card">Nenhum relatório gerado. <button class="btn amber" onclick="analiticoModal()">Gerar relatório analítico</button></div>`; }
+  const n=ymLista(A.ini,A.fim).length; const pIni=ymAdd(A.ini,-n), pFim=ymAdd(A.ini,-1);
+  const a=dadosAnalise(A.ini,A.fim), p=dadosAnalise(pIni,pFim);
+  const rotAnt = n===1 ? ymNome(pIni) : ymNome(pIni)+'–'+ymNome(pFim);
+  const ins=insightsAnalise(a,p,rotAnt); const ICN={ alerta:'!', atencao:'▲', bom:'✓', info:'i' };
+  const fechado = n===1 && S.gerOk && S.fech.some(f=>f.competencia===A.ini);
+  // indicadores
+  const K=[]; const k=(l,va,vp,fmt,bomSobe,pp)=>K.push({ l, va, vp, fmt, bomSobe, pp });
+  if(S.finOk){ k('Receita faturada',a.fat,p.fat,BRL,true); k('Recebido (caixa)',a.rec,p.rec,BRL,true); k('Custos + impostos',a.ct,p.ct,BRL,false); k('Resultado',a.res,p.res,BRL,true); k('Margem',a.marg,p.marg,PCT,true,true); k('Pagamentos em dia',a.emDia,p.emDia,PCT,true,true); }
+  k('MRR no fim do período',a.mrrFim,p.mrrFim,BRL,true); k('Clientes ativos no fim',a.ativos,p.ativos,NUM,true); k('Clientes novos',a.novos,p.novos,NUM,true); k('Cancelamentos',a.canc,p.canc,NUM,false);
+  k('Expansão (reajustes/upgrades)',a.exp,p.exp,BRL,true); k('Contração (descontos/downgrades)',a.contr,p.contr,BRL,false); k('Retenção de receita (NRR)',a.nrr,p.nrr,PCT,true,true);
+  if(S.gerOk){ k('Atendimentos',a.atend,p.atend,NUM,false); k('Horas de suporte',a.minSup/60,p.minSup/60,v=>(+v||0).toLocaleString('pt-BR',{maximumFractionDigits:1})+'h',false); if(valorHora()) k('Custo do suporte',a.custoSup,p.custoSup,BRL,false); k('Uso médio das lojas',a.usoMedio,p.usoMedio,PCT,true,true); }
+  const kRows=K.map(x=>({ ind:x.l, va:x.va==null?'—':x.fmt(x.va), vp:x.vp==null?'—':x.fmt(x.vp), vr:hx(setaVar(x.pp?((x.va!=null&&x.vp!=null)?x.va-x.vp:null):varPct(x.va,x.vp),x.bomSobe,x.pp), (()=>{ const v=x.pp?((x.va!=null&&x.vp!=null)?x.va-x.vp:null):varPct(x.va,x.vp); return v==null?'':(x.pp?(v*100).toFixed(1).replace('.',',')+' p.p.':(v*100).toFixed(1).replace('.',',')+'%'); })()) }));
+  const tiles=[['Receita faturada',S.finOk?BRL(a.fat):'—',S.finOk?varPct(a.fat,p.fat):null,true],['Resultado',S.finOk?BRL(a.res):'—',S.finOk?varPct(a.res,p.res):null,true],['Margem',S.finOk?PCT(a.marg):'—',(S.finOk&&a.marg!=null&&p.marg!=null)?a.marg-p.marg:null,true,true],['MRR',BRL(a.mrrFim),varPct(a.mrrFim,p.mrrFim),true],['Clientes ativos',NUM(a.ativos),varPct(a.ativos,p.ativos),true],['Suporte',S.gerOk?HMIN(a.minSup):'—',S.gerOk?varPct(a.minSup,p.minSup):null,false]];
+  // gráfico: mínimo 6 meses de contexto
+  const gIni = n>=6 ? A.ini : ymAdd(A.fim,-5); const gMeses=ymLista(gIni,A.fim);
+  const g = S.finOk ? comPer(gIni,A.fim,relDRE).blocos[1].rows : [];
+  const blocos=[];
+  if(S.finOk) blocos.push({ titulo:'Receita faturada x custos'+(n<6?' (últimos 6 meses)':''), html:barras(gMeses,[{nome:'Receita faturada',cor:'var(--s1)',vals:g.map(r=>r.fat)},{nome:'Custos + impostos',cor:'var(--s2)',vals:g.map(r=>r.ct)}]) });
+  blocos.push({ titulo:'Indicadores — '+perExt(A.ini,A.fim)+' x '+rotAnt, cols:[['ind','Indicador','b'],['va',n===1?ymNome(A.ini):'Período','txt'],['vp',rotAnt,'txt'],['vr','Variação','html']], rows:kRows });
+  if(S.finOk && a.lojas.length){ const saude={}; relSaude().blocos[0].rows.forEach(r=>{ saude[r.loja]=r.score; }); const usoL={}; (a.uso||[]).forEach(r=>{ usoL[r.loja]=r; });
+    blocos.push({ titulo:'Lojas no período', cols:[['loja','Loja','b'],['sit','Situação','tag'],['fat','Faturado','brl'],['rec','Recebido','brl'],['res','Resultado','brl'],['horas','Suporte (h)','dec'],['res2','Após suporte','brl'],['dias','Dias de uso','int'],['nota','Saúde hoje','tag']],
+      rows:a.lojas.slice().sort((x,y)=>y.fat-x.fat).map(r=>({ ...r, dias:usoL[r.loja]?usoL[r.loja].dias:null, nota:saude[r.loja]||null })), total:{ fat:soma(a.lojas,r=>r.fat), rec:soma(a.lojas,r=>r.rec), res:soma(a.lojas,r=>r.res), horas:S.gerOk?soma(a.lojas,r=>r.horas||0):null, res2:valorHora()?soma(a.lojas,r=>r.res2||0):null } }); }
+  if(S.finOk && a.cats.length) blocos.push({ titulo:'Custos por categoria', html:hbarras(a.cats.map(c=>({ l:c.cat, v:c.total, x:PCT(c.pct) }))) });
+  if(S.gerOk && a.contratos && a.contratos.length) blocos.push({ titulo:'Mudanças de contrato', cols:[['data','Vale desde','date'],['loja','Loja','b'],['tipo','Tipo','tag'],['va','Antes','brl'],['vn','Depois','brl'],['dif','Diferença','brl']], rows:a.contratos });
+  const acoes=ins.filter(x=>x.acao);
+  S._rel={ titulo:'Relatório Analítico — '+perExt(A.ini,A.fim), periodo:'Comparado com '+rotAnt,
+    kpis:tiles.map(t=>[t[0],t[1]]), blocos:[{ titulo:'Resumo executivo', cols:[['n','Nível','txt'],['t','Constatação','txt'],['a','Ação sugerida','txt']], rows:ins.map(x=>({ n:{alerta:'Alerta',atencao:'Atenção',bom:'Bom',info:'Info'}[x.nivel], t:x.texto.replace(/<[^>]+>/g,''), a:x.acao?x.acao.replace(/<[^>]+>/g,''):'' })) }, ...blocos.filter(b=>b.cols)] };
+  return `<div class="toolbar noprint"><button class="btn" onclick="ir('relf', S.rel||'dre')">← Relatórios</button><button class="btn" onclick="analiticoModal()">Trocar período</button>
+     <div style="margin-left:auto;display:flex;gap:6px"><button class="btn" onclick="window.print()">Imprimir / PDF</button><button class="btn" onclick="exportarCSV()">Exportar planilha (CSV)</button></div></div>
+   <div class="an-capa"><div class="bi-ico"><svg viewBox="0 0 24 24" aria-hidden="true">${ICO_BULB}</svg></div><div style="flex:1;min-width:200px"><small>Central GestãoPro · Relatório Analítico</small><h2>${n===1?'Mês de '+mesExt(A.ini):perExt(A.ini,A.fim)+' ('+n+' meses)'}</h2>
+     <p>Comparado com ${rotAnt} · emitido em ${fDH(new Date().toISOString())}${n===1&&S.gerOk?' · '+(fechado?'<b style="color:#86efac">mês fechado</b>':(A.ini<ymHoje()?'<b style="color:#fcd34d">mês ainda não fechado</b>':'<b style="color:#fcd34d">mês em andamento</b>')):''}</p></div></div>
+   <div class="mini an-tiles">${tiles.map(([l,v,vr,bs,pp])=>`<div><small>${l}</small><b>${v}</b><div class="small">${setaVar(vr,bs,pp)}</div></div>`).join('')}</div>
+   <div class="card"><h4>Resumo executivo</h4><div class="an-ins">${ins.map(x=>`<div class="an-i ${x.nivel}"><span class="an-ic">${ICN[x.nivel]}</span><div>${x.texto}</div></div>`).join('')}</div></div>
+   ${acoes.length?`<div class="card"><h4>Próximos passos</h4><ol class="an-acoes">${acoes.map(x=>`<li class="${x.nivel}">${x.acao}</li>`).join('')}</ol></div>`:''}
+   ${blocos.map(b=>b.cols?tabelaHTML(b):`<div class="card"><h4>${esc(b.titulo)}</h4>${b.html}</div>`).join('')}
+   <p class="mut small">Inadimplência, licenças vencendo e saúde das lojas mostram a situação de hoje. ${!S.gerOk?'Uso, suporte e histórico de contrato aparecem depois de rodar o central.sql v1.5.':''}</p>`; }
+
+/* =====================================================================
    RELATÓRIOS (v1.2) — financeiros e gerenciais
    ===================================================================== */
 const RELS = [
@@ -873,7 +1022,7 @@ function periodoPreset(p){ const h=ymHoje(); const ano=h.slice(0,4);
   if(m){ S.per.ini=m[0]; S.per.fim=m[1]; render(); } }
 function periodoSet(k,v){ if(!/^\d{4}-\d{2}$/.test(v)) return; S.per[k]=v; if(S.per.ini>S.per.fim){ if(k==='ini') S.per.fim=v; else S.per.ini=v; } render(); }
 function telaRelatorios(){ if(!S.per.ini){ S.per.fim=ymHoje(); S.per.ini=ymAdd(S.per.fim,-5); }
-  const nav='';
+  const nav=bannerAnalitico();
   const temPer=REL_PERIODO[S.rel];
   const ctl=`<div class="toolbar noprint">${temPer?`<div class="per"><span class="small mut">De</span><input type="month" value="${S.per.ini}" onchange="periodoSet('ini',this.value)"><span class="small mut">até</span><input type="month" value="${S.per.fim}" onchange="periodoSet('fim',this.value)">
       <select onchange="periodoPreset(this.value);this.value=''"><option value="">Atalhos…</option><option value="mes">Este mês</option><option value="ant">Mês passado</option><option value="m3">Últimos 3 meses</option><option value="m6">Últimos 6 meses</option><option value="m12">Últimos 12 meses</option><option value="ano">Este ano</option><option value="anoant">Ano passado</option></select></div>`
@@ -1089,12 +1238,12 @@ function menuItens(){ return [
   { k:'empresas', l:'Empresas', subs:[['lista','Lista de lojas'],['nova','+ Nova empresa']] },
   { k:'fin', l:'Financeiro', subs:[['mens','Mensalidades'],['custos','Custos'],['fech','Fechamento do mês']] },
   { k:'sup', l:'Suporte', subs:[['atend','Atendimentos'],['novo','+ Registrar atendimento']] },
-  { k:'relf', l:'Relatórios financeiros', subs:RELS[0][1] },
+  { k:'relf', l:'Relatórios financeiros', subs:[['analitico','★ Relatório analítico'], ...RELS[0][1]] },
   { k:'relg', l:'Relatórios gerenciais', subs:RELS[1][1] },
   { k:'acomp', l:'Acompanhamento' },
   { k:'eventos', l:'Eventos' } ]; }
-function grupoAtivo(){ if(S.tela==='rel') return RELS[0][1].some(x=>x[0]===S.rel)?'relf':'relg'; return S.tela; }
-function subAtiva(g){ if(g==='empresas') return 'lista'; if(g==='sup') return 'atend'; if(g==='fin') return S.fin.aba; if(g==='relf'||g==='relg') return S.rel; return null; }
+function grupoAtivo(){ if(S.tela==='analitico') return 'relf'; if(S.tela==='rel') return RELS[0][1].some(x=>x[0]===S.rel)?'relf':'relg'; return S.tela; }
+function subAtiva(g){ if(g==='empresas') return 'lista'; if(g==='sup') return 'atend'; if(g==='fin') return S.fin.aba; if(g==='relf'&&S.tela==='analitico') return 'analitico'; if(g==='relf'||g==='relg') return S.rel; return null; }
 function menuBadge(g,sub){ const n=S.finOk?mensAtrasadas().length:0;
   if((g==='fin'&&sub==='mens')||(g==='relf'&&sub==='inad')||(g==='fin'&&!sub)) return n?`<span class="bdg" title="${n} mensalidade(s) em atraso">${n}</span>`:'';
   if(g==='sup'&&(sub==='atend'||!sub)&&S.gerOk){ const a=S.atend.filter(x=>x.situacao==='aberto').length; return a?`<span class="bdg" title="${a} atendimento(s) em aberto">${a}</span>`:''; }
@@ -1126,6 +1275,7 @@ function ir(g,sub){
   if(g==='empresas'){ S.tela='empresas'; if(sub==='nova'){ S.menuAberto=false; render(); formEmpresa(); return; } }
   else if(g==='fin'){ S.tela='fin'; if(sub) S.fin.aba=sub; }
   else if(g==='sup'){ S.tela='sup'; if(sub==='novo'){ S.menuAberto=false; render(); atendModal(null); return; } }
+  else if(g==='relf' && sub==='analitico'){ S.menuAberto=false; if(S.ana){ S.tela='analitico'; } else { render(); analiticoModal(); return; } }
   else if(g==='relf'||g==='relg'){ const lista=(g==='relf'?RELS[0]:RELS[1])[1]; S.tela='rel'; S.rel = sub || (lista.some(x=>x[0]===S.rel)?S.rel:lista[0][0]); }
   else S.tela=g;
   S.menuAberto=false; render(); try{ window.scrollTo(0,0); }catch(e){} }
