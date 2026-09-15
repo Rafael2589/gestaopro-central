@@ -38,7 +38,7 @@ main{padding:18px 22px;max-width:1280px;margin:0 auto}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.kpi small{color:var(--mut);font-size:11px;display:block}.kpi b{font-size:clamp(16px,1.35vw,20px);white-space:nowrap}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
 table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:8px 8px;border-bottom:2px solid var(--line)}td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr:hover td{background:#f8fafc}
-.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.tag.pos{background:#dcfce7;color:#166534}.tag.neg{background:#fee2e2;color:#991b1b}.tag.warn{background:var(--amber-soft);color:#92400e}.tag.info{background:#dbeafe;color:#1e40af}.tag.mut{background:#e2e8f0;color:#475569}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}.tag.pos{background:#dcfce7;color:#166534}.tag.neg{background:#fee2e2;color:#991b1b}.tag.warn{background:var(--amber-soft);color:#92400e}.tag.info{background:#dbeafe;color:#1e40af}.tag.mut{background:#e2e8f0;color:#475569}
 .btn{border:1px solid var(--line);background:#fff;padding:7px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ink)}.btn.amber{background:var(--amber);border-color:var(--amber)}.btn.sm{padding:5px 9px;font-size:12px}.btn.neg{color:var(--neg)}.btn.pos{color:var(--pos)}.btn:disabled{opacity:.5;cursor:not-allowed}
 .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.toolbar input{flex:1;min-width:200px}
 input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}label{font-size:11.5px;color:var(--mut);font-weight:600;display:block;margin:8px 0 4px}
@@ -65,6 +65,9 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 .aviso{background:var(--amber-soft);border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;font-size:13px}
 .printhead{display:none}
 @media print{.side,.veu,.topo,.noprint,#toast{display:none!important}main{padding:0;max-width:none}.card{break-inside:avoid;border-color:#cbd5e1}.printhead{display:block;margin-bottom:10px}body{background:#fff}tr:hover td{background:none}}
+/* v1.5 */
+.strip{display:inline-flex;gap:1px;vertical-align:middle}.strip i{display:inline-block;width:6px;height:14px;border-radius:2px;background:#e2e8f0}.strip i.on{background:var(--pos)}
+@media print{body:has(#modal-bg.open) #app{display:none}#modal-bg.open{position:static;background:none;padding:0}#modal-bg.open .modal{max-height:none;box-shadow:none}#modal-bg.open .btn{display:none}}
 @media(min-width:1600px){.kpis{grid-template-columns:repeat(8,minmax(0,1fr))}}@media(max-width:640px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
@@ -77,7 +80,7 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 // Conexão FIXA com o projeto Supabase da Central (Settings → API Keys). Só a URL e a chave PUBLICÁVEL —
 // nunca a service_role/secret. Com isto preenchido, nenhum computador pede a conexão: vai direto para o login.
 const CENTRAL_CFG = { url: 'https://hpwvrutngzpiimaypijs.supabase.co', key: 'sb_publishable_01v-fzmCQZcobWFgx0zQwA_caQjRi1W' };   // ex.: url:'https://xxxx.supabase.co', key:'sb_publishable_...'
-const VERSAO = '1.4';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
+const VERSAO = '1.5';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
 const CENTRAL_URL_ATUAL = () => (cfg().url || '').replace(/\/+$/,'');
 
 const $ = id => document.getElementById(id);
@@ -239,8 +242,8 @@ async function trocarSenha(){ const a=$('s-nova').value, b=$('s-rep').value;
 
 /* ===== dados ===== */
 async function carregar(){ const c=sb(); if(!c) return;
-  const [e,s,v,m,k]=await Promise.all([ c.from('empresas').select('*').order('criado_em'), c.from('sinais').select('*'), c.from('eventos').select('*').order('em',{ascending:false}).limit(2000),
-    c.from('mensalidades').select('*').order('vencimento').limit(20000), c.from('custos').select('*').order('data').limit(20000) ]);
+  const [e,s,v,m,k]=await Promise.all([ c.from('empresas').select('*').order('criado_em'), c.from('sinais').select('*'), c.from('eventos').select('*').order('em',{ascending:false}).limit(1000),
+    buscarTudo(()=>c.from('mensalidades').select('*').order('vencimento').order('id')), buscarTudo(()=>c.from('custos').select('*').order('data').order('id')), carregarGerencial(c) ]);
   if(e.error){ toast(e.error.message.indexOf('does not exist')>=0?'Rode o central.sql no projeto da Central':e.error.message,'err'); }
   S.empresas=e.data||[]; S.sinais={}; (s.data||[]).forEach(x=>S.sinais[x.tenant]=x); S.eventos=v.data||[];
   S.finOk=!(m.error||k.error); S.finErr=((m.error||k.error)||{}).message||''; S.mens=m.data||[]; S.custos=k.data||[]; }
@@ -266,7 +269,7 @@ function render(){ if(!S.user) return telaLogin(); if(!S.aal2) return passoMFA()
    <div class="topo"><button class="hamb" onclick="S.menuAberto=true;render()" aria-label="Abrir menu">☰</button><div class="crumb">${migalha()}</div></div>
    <main>
     <div class="kpis noprint"><div class="kpi"><small>Lojas</small><b>${vivas.length}</b></div><div class="kpi"><small>Ativas</small><b style="color:var(--pos)">${ativas}</b></div><div class="kpi"><small>Em teste</small><b style="color:var(--info)">${teste}</b></div><div class="kpi"><small>Vencendo (10 dias)</small><b style="color:var(--amber-d)">${venc}</b></div><div class="kpi"><small>Suspensas / vencidas</small><b style="color:var(--neg)">${bloq}</b></div><div class="kpi"><small>Receita mensal (MRR)</small><b>${BRL(mrr)}</b></div><div class="kpi"><small>Sem sinal há 7 dias</small><b style="color:${semSinal?'var(--neg)':'inherit'}">${semSinal}</b></div>${atraso!=null?`<div class="kpi" style="cursor:pointer" onclick="S.tela='rel';S.rel='inad';render()" title="Ver inadimplência"><small>Mensalidades em atraso</small><b style="color:${atraso?'var(--neg)':'inherit'}">${BRL(atraso)}</b></div>`:''}</div>
-    <div id="tela">${({empresas:telaEmpresas, fin:telaFinanceiro, rel:telaRelatorios, acomp:telaAcomp, eventos:telaEventos})[S.tela]()}</div>
+    <div id="tela">${({empresas:telaEmpresas, fin:telaFinanceiro, rel:telaRelatorios, sup:telaSuporte, acomp:telaAcomp, eventos:telaEventos})[S.tela]()}</div>
    </main></div></div>`; }
 function telaEmpresas(){ const q=S.q.toLowerCase(); const lista=S.empresas.filter(e=>!q||(e.nome+' '+e.tenant+' '+(e.cidade||'')+' '+(e.contato||'')).toLowerCase().includes(q));
   return `<div class="toolbar"><input placeholder="Buscar loja, cidade, contato…" value="${esc(S.q)}" oninput="S.q=this.value;$('tela').innerHTML=telaEmpresas()"><button class="btn amber" onclick="formEmpresa()">+ Nova empresa</button></div>
@@ -275,9 +278,9 @@ function telaEmpresas(){ const q=S.q.toLowerCase(); const lista=S.empresas.filte
     return `<tr><td><b>${esc(e.nome)}</b><div class="mut small">${esc(e.cidade||'')}${e.contato?' · '+esc(e.contato):''}${e.telefone?' · '+esc(e.telefone):''}</div></td><td class="mono">${esc(e.tenant)}</td><td>${esc(e.plano)}<div class="mut small">${BRL(e.valor_mensal)}/mês</div></td><td>${s.tag}</td><td>${e.vence_em?fD(e.vence_em):'<span class="mut">—</span>'}</td><td class="small">${ult}</td><td class="mono">${esc(sg.versao||'—')}</td>
       <td style="white-space:nowrap"><button class="btn sm" onclick="formEmpresa('${esc(e.tenant)}')">Editar</button> <button class="btn sm" onclick="renovar('${esc(e.tenant)}')">Renovar</button> ${(e.status==='suspensa'||e.cancelado_em)?`<button class="btn sm pos" onclick="mudarStatus('${esc(e.tenant)}','ativa')">Reativar</button>`:`<button class="btn sm neg" onclick="mudarStatus('${esc(e.tenant)}','suspensa')">Suspender</button>`} <button class="btn sm" onclick="kit('${esc(e.tenant)}')">Kit</button></td></tr>`; }).join(''):`<tr><td colspan="8" class="mut" style="text-align:center;padding:24px">Nenhuma loja ainda. Clique em <b>Nova empresa</b>.</td></tr>`}
   </tbody></table></div>`; }
-function telaAcomp(){ return `<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Empresa</th><th>Última abertura</th><th>Versão</th><th>Usuários</th><th>Produtos</th><th>Clientes</th><th>Vendas no mês</th><th>Tendência</th><th>Aparelho</th></tr></thead><tbody>
+function telaAcomp(){ return `<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Empresa</th><th>Última abertura</th><th>Versão</th><th>Usuários</th><th>Produtos</th><th>Clientes</th><th>Vendas no mês</th><th>Uso (últimos 28 dias)</th><th>Tendência</th><th>Aparelho</th></tr></thead><tbody>
   ${S.empresas.map(e=>{ const s=S.sinais[e.tenant]||{}; const velho=s.ultima_abertura&&(Date.now()-new Date(s.ultima_abertura)>7*86400000);
-    return `<tr><td><b>${esc(e.nome)}</b> ${situacao(e).tag}</td><td class="small" style="${velho?'color:var(--neg)':''}">${fDH(s.ultima_abertura)}</td><td class="mono">${esc(s.versao||'—')}</td><td>${s.usuarios??'—'}</td><td>${s.produtos??'—'}</td><td>${s.clientes??'—'}</td><td>${s.vendas_mes!=null?BRL(s.vendas_mes)+' <span class="mut small">('+(s.qtd_vendas_mes||0)+')</span>':'—'}</td><td>${spark(s.historico)}</td><td class="small mut">${esc(s.aparelho||'')}</td></tr>`; }).join('')||'<tr><td colspan="9" class="mut" style="text-align:center;padding:24px">Sem lojas.</td></tr>'}
+    return `<tr><td><b>${esc(e.nome)}</b> ${situacao(e).tag}</td><td class="small" style="${velho?'color:var(--neg)':''}">${fDH(s.ultima_abertura)}</td><td class="mono">${esc(s.versao||'—')}</td><td>${s.usuarios??'—'}</td><td>${s.produtos??'—'}</td><td>${s.clientes??'—'}</td><td>${s.vendas_mes!=null?BRL(s.vendas_mes)+' <span class="mut small">('+(s.qtd_vendas_mes||0)+')</span>':'—'}</td><td style="white-space:nowrap">${S.gerOk?faixaUso(e.tenant,28)+' <span class="small mut">'+diasAtivos(e.tenant,addDias(hojeISO(),-27),hojeISO())+'d</span>':'—'}</td><td>${spark(s.historico)}</td><td class="small mut">${esc(s.aparelho||'')}</td></tr>`; }).join('')||'<tr><td colspan="10" class="mut" style="text-align:center;padding:24px">Sem lojas.</td></tr>'}
   </tbody></table></div><p class="mut small">Os sinais chegam quando o sistema da loja abre e confere a licença. Só totais — nenhum dado de cliente da loja passa por aqui.</p>`; }
 function telaEventos(){ return `<div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Quando</th><th>Empresa</th><th>Evento</th><th>Detalhe</th></tr></thead><tbody>
   ${S.eventos.map(v=>`<tr><td class="small">${fDH(v.em)}</td><td class="mono">${esc(v.tenant||'')}</td><td><span class="tag ${/invalida|bloqueada|suspens/.test(v.tipo)?'neg':'mut'}">${esc(v.tipo)}</span></td><td class="small mut">${esc(v.detalhe||'')}</td></tr>`).join('')||'<tr><td colspan="4" class="mut" style="text-align:center;padding:24px">Nenhum evento.</td></tr>'}</tbody></table></div>`; }
@@ -288,13 +291,15 @@ function formEmpresa(tenant){ const e=tenant?S.empresas.find(x=>x.tenant===tenan
    <div class="row"><div><label>Nome da loja *</label><input id="f-nome" value="${esc(e?e.nome:'')}"></div><div><label>Identificador (tenant) *</label><input id="f-tenant" value="${esc(e?e.tenant:'')}" ${novo?'':'disabled'} placeholder="ex.: cirurgica-mais" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'')"></div></div>
    <div class="row"><div><label>CNPJ <span id="f-cnpj-st" class="mut" style="font-weight:400"></span></label><input id="f-cnpj" value="${esc(e?e.cnpj:'')}" placeholder="só números — busca sozinho" inputmode="numeric" oninput="cnpjAoDigitar(this)" onblur="cnpjAoDigitar(this,true)"></div><div><label>Cidade</label><input id="f-cidade" value="${esc(e?e.cidade:'')}"></div></div>
    <div class="row"><div><label>Contato</label><input id="f-contato" value="${esc(e?e.contato:'')}"></div><div><label>Telefone / WhatsApp</label><input id="f-tel" value="${esc(e?e.telefone:'')}"></div></div>
-   <div class="row"><div><label>E-mail</label><input id="f-email" value="${esc(e?e.email:'')}"></div><div><label>Plano</label><select id="f-plano">${['teste','padrao','completo'].map(p=>`<option ${e&&e.plano===p?'selected':(!e&&p==='teste'?'selected':'')}>${p}</option>`).join('')}</select></div></div>
-   <div class="row"><div><label>Valor mensal (R$)</label><input id="f-valor" type="number" step="0.01" value="${e?(+e.valor_mensal||0):0}"></div><div><label>Vencimento da licença</label><input id="f-vence" type="date" value="${esc(e?(e.vence_em||''):d.toISOString().slice(0,10))}"></div></div>
+   <div class="row"><div><label>E-mail</label><input id="f-email" value="${esc(e?e.email:'')}"></div><div><label>Plano</label><select id="f-plano" ${e?`onchange="mudancaContratoVer(${+e.valor_mensal||0},'${esc(e.plano)}')"`:''}>${['teste','padrao','completo'].map(p=>`<option ${e&&e.plano===p?'selected':(!e&&p==='teste'?'selected':'')}>${p}</option>`).join('')}</select></div></div>
+   <div class="row"><div><label>Valor mensal (R$)</label><input id="f-valor" type="number" step="0.01" value="${e?(+e.valor_mensal||0):0}" ${e?`oninput="mudancaContratoVer(${+e.valor_mensal||0},'${esc(e.plano)}')"`:''}></div><div><label>Vencimento da licença</label><input id="f-vence" type="date" value="${esc(e?(e.vence_em||''):d.toISOString().slice(0,10))}"></div></div>
+   ${mudancaContratoCampos(e)}
    <div class="row"><div><label>Dia de vencimento da mensalidade</label><input id="f-dia" type="number" min="1" max="31" value="${e&&e.dia_cobranca?e.dia_cobranca:10}"></div><div><label>Cliente pagante desde <span class="mut" style="font-weight:400">(usado nos relatórios)</span></label><input id="f-ativada" type="date" value="${esc(e?(e.ativada_em||''):'')}"></div></div>
    ${e&&e.cancelado_em?`<div class="aviso" style="margin-top:8px">Contrato <b>encerrado em ${fD(e.cancelado_em)}</b>${e.motivo_cancelamento?' — '+esc(e.motivo_cancelamento):''}.</div>`:''}
    <div class="row"><div><label>Projeto Supabase da loja (URL)</label><input id="f-proj" value="${esc(e?e.projeto_url:'')}" placeholder="https://xxxx.supabase.co"></div><div><label>Endereço do sistema da loja</label><input id="f-app" value="${esc(e?e.app_url:'')}" placeholder="https://loja.vercel.app"></div></div>
    <label>Chave de licença</label><div style="display:flex;gap:6px"><input id="f-chave" class="mono" value="${esc(e?e.chave:gerarChave())}" readonly><button class="btn" onclick="if(confirm('Gerar uma NOVA chave? A loja para de abrir até você atualizar o segredo LICENCA_CHAVE no projeto dela.')){$('f-chave').value=gerarChave();}">Gerar nova</button><button class="btn" onclick="copiar($('f-chave').value)">Copiar</button></div>
    <label>Observações</label><textarea id="f-obs" rows="2">${esc(e?e.obs:'')}</textarea>
+   ${e?blocoHistorico(e):''}
    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">${novo?'':(e.cancelado_em?`<button class="btn pos" style="margin-right:auto" onclick="desfazerEncerramento('${esc(e.tenant)}')">Desfazer encerramento</button>`:`<button class="btn neg" style="margin-right:auto" onclick="encerrarContrato('${esc(e.tenant)}')">Encerrar contrato</button>`)}<button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="salvarEmpresa(${novo?'null':"'"+esc(e.tenant)+"'"})">${novo?'Criar loja':'Salvar'}</button></div>`); }
 async function salvarEmpresa(tenantAtual){ const g=id=>($(id)?$(id).value:'').trim(); const nome=g('f-nome'), tenant=(tenantAtual||g('f-tenant'));
   if(!nome){ toast('Informe o nome','err'); return; } if(!/^[a-z0-9][a-z0-9-]{2,29}$/.test(tenant)){ toast('Identificador: 3 a 30 caracteres, letras minúsculas, números e hífen','err'); return; }
@@ -303,8 +308,13 @@ async function salvarEmpresa(tenantAtual){ const g=id=>($(id)?$(id).value:'').tr
   row.ativada_em=g('f-ativada')||null;
   if(!tenantAtual){ row.status = row.plano==='teste'?'teste':'ativa'; if(row.status==='ativa' && !row.ativada_em) row.ativada_em=hojeISO(); }
   if(!S.finOk){ delete row.dia_cobranca; delete row.ativada_em; }   // central.sql antigo: não manda colunas novas
+  const ant=tenantAtual?S.empresas.find(x=>x.tenant===tenantAtual):null;
+  const mudou=ant && (Math.abs((+ant.valor_mensal||0)-row.valor_mensal)>0.004 || ant.plano!==row.plano);
+  const mud=mudou&&$('f-mud-data')?{ data:$('f-mud-data').value||hojeISO(), tipo:$('f-mud-tipo').value, obs:$('f-mud-obs').value.trim() }:null;
   const c=sb(); const r=tenantAtual? await c.from('empresas').update(row).eq('tenant',tenant) : await c.from('empresas').insert(row);
   if(r.error){ toast(/duplicate|23505/i.test(r.error.message||r.error.code||'')?'Já existe uma loja com esse identificador':r.error.message,'err'); return; }
+  if(mud) await histRegistrar({ tenant, vigente_desde:mud.data, plano:row.plano, valor_mensal:row.valor_mensal, tipo:mud.tipo, obs:mud.obs||('antes: '+(ant.plano||'')+' · '+BRL(ant.valor_mensal)) });
+  if(!tenantAtual) await histRegistrar({ tenant, vigente_desde:row.ativada_em||hojeISO(), plano:row.plano, valor_mensal:row.valor_mensal, tipo:'inicio', obs:row.plano==='teste'?'início do teste':null });
   try{ await c.from('eventos').insert({ tenant, tipo:tenantAtual?'empresa_editada':'empresa_criada', detalhe:nome }); }catch(e){}
   fecharModal(); toast(tenantAtual?'Salvo':'Loja criada — veja o Kit de implantação'); await carregar(); render(); if(!tenantAtual) kit(tenant); }
 async function mudarStatus(tenant, status){ const e=S.empresas.find(x=>x.tenant===tenant); if(!e) return;
@@ -313,6 +323,7 @@ async function mudarStatus(tenant, status){ const e=S.empresas.find(x=>x.tenant=
   if(status==='ativa' && S.finOk){ upd.cancelado_em=null; upd.motivo_cancelamento=null; if(!e.ativada_em) upd.ativada_em=hojeISO(); }
   const c=sb(); const r=await c.from('empresas').update(upd).eq('tenant',tenant); if(r.error){ toast(r.error.message,'err'); return; }
   try{ await c.from('eventos').insert({ tenant, tipo:status==='suspensa'?'suspensa':'reativada', detalhe:S.user.email }); }catch(x){}
+  if(status==='ativa' && e.cancelado_em) await histRegistrar({ tenant, vigente_desde:hojeISO(), plano:e.plano, valor_mensal:+e.valor_mensal||0, tipo:'reativacao', obs:null });
   toast(status==='suspensa'?'Loja suspensa':'Loja reativada'); await carregar(); render(); }
 function renovar(tenant){ const e=S.empresas.find(x=>x.tenant===tenant); if(!e) return;
   const base=e.vence_em && diasAte(e.vence_em)>0 ? e.vence_em : hojeISO(); const nova=addMeses(base,1);
@@ -335,6 +346,7 @@ async function renovarSalvar(tenant){ const e=S.empresas.find(x=>x.tenant===tena
     const ok=await registrarPagamento(tenant, comp, { pago_em:data, valor_pago:valor, forma:$('r-forma').value }); if(!ok) return; }
   const r=await c.from('empresas').update(upd).eq('tenant',tenant); if(r.error){ toast(r.error.message,'err'); return; }
   try{ await c.from('eventos').insert({ tenant, tipo:'renovada', detalhe:v||'sem vencimento' }); }catch(x){}
+  if(e.cancelado_em) await histRegistrar({ tenant, vigente_desde:hojeISO(), plano:e.plano, valor_mensal:+e.valor_mensal||0, tipo:'reativacao', obs:'renovação' });
   fecharModal(); toast('Licença renovada'); await carregar(); render(); }
 async function encerrarContrato(tenant){ const e=S.empresas.find(x=>x.tenant===tenant); if(!e) return;
   if(!S.finOk){ toast('Rode o central.sql atualizado para usar o encerramento','err'); return; }
@@ -344,10 +356,12 @@ async function encerrarContrato(tenant){ const e=S.empresas.find(x=>x.tenant===t
   const fut=S.mens.filter(m=>m.tenant===tenant && m.situacao==='aberta' && m.competencia>ymHoje()).map(m=>m.id);
   if(fut.length) await c.from('mensalidades').update({ situacao:'cancelada', obs:'contrato encerrado' }).in('id',fut);
   try{ await c.from('eventos').insert({ tenant, tipo:'contrato_encerrado', detalhe:motivo||'' }); }catch(x){}
+  await histRegistrar({ tenant, vigente_desde:hj, plano:e.plano, valor_mensal:0, tipo:'cancelamento', obs:motivo.trim()||null });
   fecharModal(); toast('Contrato encerrado'); await carregar(); render(); }
 async function desfazerEncerramento(tenant){ const e=S.empresas.find(x=>x.tenant===tenant); if(!e||!confirm('Desfazer o encerramento de "'+e.nome+'" e reativar a loja?')) return;
   const c=sb(); const r=await c.from('empresas').update({ status:'ativa', cancelado_em:null, motivo_cancelamento:null, atualizado_em:new Date().toISOString() }).eq('tenant',tenant); if(r.error){ toast(r.error.message,'err'); return; }
   try{ await c.from('eventos').insert({ tenant, tipo:'reativada', detalhe:'encerramento desfeito' }); }catch(x){}
+  await histRegistrar({ tenant, vigente_desde:hojeISO(), plano:e.plano, valor_mensal:+e.valor_mensal||0, tipo:'reativacao', obs:'encerramento desfeito' });
   fecharModal(); toast('Loja reativada'); await carregar(); render(); }
 
 /* ===== CNPJ: consulta automática (mesma cadeia do GestãoPro: BrasilAPI → cnpj.ws → proxies) ===== */
@@ -432,6 +446,7 @@ async function registrarPagamento(tenant, comp, pag){ const e=S.empresas.find(x=
   return true; }
 
 function telaFinanceiro(){ if(!S.finOk) return avisoSql();
+  if(S.fin.aba==='fech') return telaFechamento();
   if(!S.fin.comp) S.fin.comp=ymHoje(); const c=S.fin.comp;
   const nav=`<div class="toolbar noprint"><h3 style="margin:0;font-size:16px">${S.fin.aba==='custos'?'Custos da operação':'Mensalidades'}</h3>
     <div class="per" style="margin-left:auto"><button class="btn sm" onclick="S.fin.comp=ymAdd(S.fin.comp,-1);render()">‹</button><input type="month" value="${c}" onchange="if(this.value){S.fin.comp=this.value;render()}"><button class="btn sm" onclick="S.fin.comp=ymAdd(S.fin.comp,1);render()">›</button>${c!==ymHoje()?`<button class="btn sm" onclick="S.fin.comp=ymHoje();render()">Mês atual</button>`:''}</div></div>`;
@@ -535,15 +550,266 @@ async function copiarRecorrentes(c){ const ant=S.custos.filter(k=>k.competencia=
   const r=await sb().from('custos').insert(rows); if(r.error){ toast(r.error.message,'err'); return; } toast('Recorrentes copiados'); await carregar(); render(); }
 
 /* =====================================================================
+   CONTROLE GERENCIAL (v1.5) — histórico de contrato, fechamento do mês,
+   uso diário das lojas e atendimentos de suporte
+   ===================================================================== */
+const TIPOS_CONTRATO = [['inicio','Início'],['reajuste','Reajuste'],['upgrade','Upgrade (plano maior)'],['downgrade','Downgrade (plano menor)'],['ajuste','Ajuste / desconto'],['cancelamento','Cancelamento'],['reativacao','Reativação']];
+const tipoContratoNome = t => (TIPOS_CONTRATO.find(x=>x[0]===t)||[,t||'—'])[1];
+const TIPO_COR = { inicio:'info', reajuste:'warn', upgrade:'pos', downgrade:'neg', ajuste:'mut', cancelamento:'neg', reativacao:'pos' };
+const CANAIS = [['whatsapp','WhatsApp'],['telefone','Telefone'],['remoto','Acesso remoto'],['presencial','Presencial'],['email','E-mail']];
+const MOTIVOS = [['duvida','Dúvida de uso'],['erro','Erro / problema'],['fiscal','Fiscal (NF-e / NFC-e)'],['implantacao','Implantação'],['treinamento','Treinamento'],['melhoria','Pedido de melhoria'],['financeiro','Financeiro / cobrança'],['outro','Outro']];
+const nomeDeLista = (lista,k) => (lista.find(x=>x[0]===k)||[,k||'—'])[1];
+const selDe = (id,lista,v) => `<select id="${id}">${lista.map(([k,l])=>`<option value="${k}" ${k===v?'selected':''}>${l}</option>`).join('')}</select>`;
+const HMIN = m => { m=Math.round(+m||0); const h=Math.floor(m/60), r=m%60; return h?(h+'h'+(r?String(r).padStart(2,'0'):'')):(r+' min'); };
+const addDias = (isoD,n) => { const [a,m,d]=isoD.split('-').map(Number); return iso(new Date(a,m-1,d+n)); };
+
+async function buscarTudo(mk){ let out=[]; const passo=1000;
+  for(let i=0,de=0;i<60;i++,de+=passo){ const r=await mk().range(de,de+passo-1); if(r.error) return { data:null, error:r.error };
+    out=out.concat(r.data||[]); if(!r.data || r.data.length<passo) break; }
+  return { data:out, error:null }; }
+async function carregarGerencial(c){
+  const desde=addDias(hojeISO(),-400);
+  const [h,f,u,a,k]=await Promise.all([
+    buscarTudo(()=>c.from('contrato_historico').select('*').order('vigente_desde').order('id')),
+    c.from('fechamentos').select('*').order('competencia'),
+    buscarTudo(()=>c.from('uso_diario').select('*').gte('dia',desde).order('dia')),
+    buscarTudo(()=>c.from('atendimentos').select('*').order('data',{ascending:false}).order('id',{ascending:false})),
+    c.from('config').select('*') ]);
+  const err=h.error||f.error||u.error||a.error||k.error;
+  S.gerOk=!err; S.gerErr=err?err.message:'';
+  S.hist=h.data||[]; S.fech=f.data||[]; S.uso=u.data||[]; S.atend=a.data||[];
+  S.cfg={}; (k.data||[]).forEach(x=>{ S.cfg[x.chave]=x.valor; });
+  S.histPor={}; S.hist.forEach(x=>{ (S.histPor[x.tenant]=S.histPor[x.tenant]||[]).push(x); });
+  Object.values(S.histPor).forEach(l=>l.sort((x,y)=>x.vigente_desde.localeCompare(y.vigente_desde)||(x.id-y.id)));
+  S.usoPor={}; S.uso.forEach(x=>{ (S.usoPor[x.tenant]=S.usoPor[x.tenant]||[]).push(x); });
+  Object.values(S.usoPor).forEach(l=>l.sort((x,y)=>x.dia.localeCompare(y.dia))); }
+function avisoSqlGer(){ return `<div class="aviso"><b>Falta atualizar o banco da Central (v1.5).</b> Supabase da Central › SQL Editor › cole o <span class="mono">central.sql</span> novo › Run. Nada que já existe é apagado.<div class="mut small" style="margin-top:6px">${esc(S.gerErr||'')}</div></div>`; }
+const valorHora = () => +((S.cfg&&S.cfg.valor_hora_suporte&&S.cfg.valor_hora_suporte.v)||0);
+
+/* ---- histórico de contrato ---- */
+function valorEm(e,c){ const fim=ymFimISO(c); const hs=(S.histPor&&S.histPor[e.tenant])||[]; let v=null;
+  for(const h of hs){ if(h.vigente_desde<=fim && h.tipo!=='cancelamento') v=h; else if(h.vigente_desde>fim) break; }
+  return v ? (+v.valor_mensal||0) : (+e.valor_mensal||0); }
+async function histRegistrar(row){ if(!S.gerOk) return; try{ const r=await sb().from('contrato_historico').insert(row); if(r.error) toast('Histórico: '+r.error.message,'err'); }catch(e){} }
+function blocoHistorico(e){ if(!S.gerOk) return '';
+  const hs=((S.histPor&&S.histPor[e.tenant])||[]).slice().reverse();
+  return `<div class="card" style="margin:14px 0 0;background:#f8fafc"><h4 style="margin:0 0 6px">Histórico do contrato</h4>
+   <div style="overflow-x:auto"><table><thead><tr><th>Vale desde</th><th>Tipo</th><th>Plano</th><th class="n">Mensal</th><th>Obs.</th><th></th></tr></thead><tbody>
+   ${hs.map(h=>`<tr><td>${fD(h.vigente_desde)}</td><td><span class="tag ${TIPO_COR[h.tipo]||'mut'}">${esc(tipoContratoNome(h.tipo))}</span></td><td>${esc(h.plano||'')}</td><td class="n">${BRL(h.valor_mensal)}</td><td class="small mut">${esc(h.obs||'')}</td><td style="text-align:right"><button class="btn sm neg" title="Excluir" onclick="histExcluir(${h.id},'${esc(e.tenant)}')">✕</button></td></tr>`).join('')||'<tr><td colspan="6" class="mut">Sem histórico ainda.</td></tr>'}
+   </tbody></table></div>
+   <details style="margin-top:8px"><summary class="small" style="cursor:pointer;font-weight:600">+ Lançar mudança antiga (retroativa)</summary>
+    <div class="row"><div><label>Vale desde</label><input id="h-data" type="date" value="${hojeISO()}"></div><div><label>Tipo</label>${selDe('h-tipo',TIPOS_CONTRATO.filter(x=>x[0]!=='cancelamento'),'reajuste')}</div></div>
+    <div class="row"><div><label>Plano</label><input id="h-plano" value="${esc(e.plano||'')}"></div><div><label>Valor mensal (R$)</label><input id="h-valor" type="number" step="0.01" value="${+e.valor_mensal||0}"></div></div>
+    <label>Obs.</label><input id="h-obs"><div style="margin-top:8px"><button class="btn sm" onclick="histAdicionar('${esc(e.tenant)}')">Adicionar ao histórico</button> <span class="mut small">(salve antes as outras alterações do cadastro)</span></div></details></div>`; }
+async function histAdicionar(tenant){ const data=$('h-data').value, valor=+$('h-valor').value; if(!data||!(valor>=0)){ toast('Informe data e valor','err'); return; }
+  const r=await sb().from('contrato_historico').insert({ tenant, vigente_desde:data, tipo:$('h-tipo').value, plano:$('h-plano').value.trim()||null, valor_mensal:valor, obs:$('h-obs').value.trim()||null });
+  if(r.error){ toast(r.error.message,'err'); return; } toast('Histórico atualizado'); await carregar(); formEmpresa(tenant); }
+async function histExcluir(id,tenant){ if(!confirm('Excluir esta linha do histórico do contrato?')) return;
+  const r=await sb().from('contrato_historico').delete().eq('id',id); if(r.error){ toast(r.error.message,'err'); return; } await carregar(); formEmpresa(tenant); }
+function mudancaContratoCampos(e){ if(!e||!S.gerOk) return '';
+  return `<div id="f-mud" class="aviso" style="display:none;margin-top:10px"><b>Mudança de contrato</b> — o plano ou o valor foi alterado. Isso fica registrado no histórico (os relatórios de meses anteriores continuam com o valor antigo).
+    <div class="row"><div><label>Tipo da mudança</label>${selDe('f-mud-tipo',TIPOS_CONTRATO.filter(x=>!['inicio','cancelamento','reativacao'].includes(x[0])),'reajuste')}</div><div><label>Vale a partir de</label><input id="f-mud-data" type="date" value="${hojeISO()}"></div></div>
+    <label>Obs. (ex.: reajuste anual IPCA)</label><input id="f-mud-obs"></div>`; }
+function mudancaContratoVer(valorOrig, planoOrig){ const box=$('f-mud'); if(!box) return; const v=+($('f-valor').value||0), p=$('f-plano').value;
+  const mudou = Math.abs(v-(+valorOrig||0))>0.004 || p!==planoOrig; box.style.display=mudou?'':'none';
+  if(mudou && !box.dataset.tocado){ $('f-mud-tipo').value = p!==planoOrig ? (v>=(+valorOrig||0)?'upgrade':'downgrade') : (v>(+valorOrig||0)?'reajuste':'ajuste'); } }
+
+/* ---- uso diário ---- */
+function usoVendasDia(lista){ // devolve [{dia, vendas, qtd}] — usa extras.vendas_dia quando existir; senão, diferença do acumulado do mês
+  const out=[]; let ant=null;
+  for(const u of lista){ const ex=u.extras||{}; let v, q;
+    if(ex.vendas_dia!=null){ v=+ex.vendas_dia||0; q=+ex.qtd_vendas_dia||0; }
+    else { const mesmoMes = ant && ant.dia.slice(0,7)===u.dia.slice(0,7);
+      v = mesmoMes ? Math.max(0,(+u.vendas_mes||0)-(+ant.vendas_mes||0)) : (+u.vendas_mes||0);
+      q = mesmoMes ? Math.max(0,(+u.qtd_vendas_mes||0)-(+ant.qtd_vendas_mes||0)) : (+u.qtd_vendas_mes||0); }
+    out.push({ dia:u.dia, vendas:v, qtd:q }); ant=u; }
+  return out; }
+function diasAtivos(tenant, ini, fim){ return ((S.usoPor&&S.usoPor[tenant])||[]).filter(u=>u.dia>=ini && u.dia<=fim).length; }
+function faixaUso(tenant, n){ const fim=hojeISO(); const set=new Set(((S.usoPor&&S.usoPor[tenant])||[]).map(u=>u.dia)); let h='';
+  for(let i=n-1;i>=0;i--){ const d=addDias(fim,-i); h+=`<i class="${set.has(d)?'on':''}" title="${fD(d)}${set.has(d)?' · usou':''}"></i>`; }
+  return `<span class="strip">${h}</span>`; }
+function relUso(){ const ini=perIni(), fim0=perFim(), hj=hojeISO(), fim=fim0<hj?fim0:hj;
+  const lojas=S.empresas.filter(e=>!e.cancelado_em || e.cancelado_em>=ini);
+  const rows=lojas.map(e=>{ const todos=(S.usoPor[e.tenant]||[]); const lista=todos.filter(u=>u.dia>=ini && u.dia<=fim);
+    const desde=[ini, (ativadaDe(e)||String(e.criado_em||'').slice(0,10)||ini)].sort().pop(); const periodoDias=Math.max(0, difDias(fim, desde)+1);
+    const vd=usoVendasDia(todos).filter(x=>x.dia>=ini && x.dia<=fim);
+    const porMes={}; lista.forEach(u=>{ const m=u.dia.slice(0,7), ex=u.extras||{}; const p=porMes[m]||(porMes[m]={nfe:0,nfce:0,orc:0});
+      p.nfe=Math.max(p.nfe,+ex.nfe_mes||0); p.nfce=Math.max(p.nfce,+ex.nfce_mes||0); p.orc=Math.max(p.orc,+ex.orcamentos_mes||0); });
+    const tem=lista.some(u=>u.extras&&Object.keys(u.extras).length);
+    const a14=diasAtivos(e.tenant,addDias(hj,-13),hj), p14=diasAtivos(e.tenant,addDias(hj,-27),addDias(hj,-14));
+    const ult=todos.length?todos[todos.length-1].dia:null;
+    return { loja:e.nome, sit:tg(...sitTxt(e)), dias:lista.length, periodo:periodoDias, pct:periodoDias?lista.length/periodoDias:null,
+      aberturas:soma(lista,u=>u.aberturas), media:lista.length?soma(lista,u=>u.aberturas)/lista.length:null,
+      vendas:soma(vd,x=>x.vendas), qtd:soma(vd,x=>x.qtd),
+      nfe:tem?soma(Object.values(porMes),p=>p.nfe):null, nfce:tem?soma(Object.values(porMes),p=>p.nfce):null, orc:tem?soma(Object.values(porMes),p=>p.orc):null,
+      usuarios:lista.length?Math.max(...lista.map(u=>+((u.extras||{}).usuarios_dia)||0))||null:null,
+      faixa:hx(faixaUso(e.tenant,28), a14+'/14 dias'), tend:(a14||p14)?tg((a14-p14>0?'+':'')+(a14-p14)+' dias','' + (a14<p14?'neg':a14>p14?'pos':'mut')):null,
+      ult, _sem:ult?difDias(hj,ult):9999 }; }).sort((a,b)=>b._sem-a._sem || a.dias-b.dias);
+  const comUso=rows.filter(r=>r.dias>0), parados=rows.filter(r=>r._sem>=7);
+  const pcts=rows.filter(r=>r.pct!=null&&r.periodo>0);
+  return { titulo:'Uso das lojas', desc:'Cada dia em que o sistema da loja abriu (ou conferiu a licença) vira um dia de uso. Vendas por dia vêm do próprio sistema da loja; NF-e, NFC-e e orçamentos aparecem depois que a loja atualizar o GestãoPro. A faixa mostra os últimos 28 dias (verde = usou).',
+    kpis:[['Lojas com uso no período',NUM(comUso.length)],['Uso médio',pcts.length?PCT(soma(pcts,r=>r.pct)/pcts.length)+' dos dias':'—'],['Aberturas no período',NUM(soma(rows,r=>r.aberturas))],['Vendas das lojas (período)',BRL(soma(rows,r=>r.vendas))],['Paradas há 7+ dias',NUM(parados.length),parados.length?'var(--neg)':'']],
+    blocos:[ { titulo:'Por loja (menos uso primeiro)', cols:[['loja','Loja','b'],['sit','Situação','tag'],['faixa','Últimos 28 dias','html'],['tend','14d x 14d ant.','tag'],['dias','Dias com uso','int'],['pct','% do período','pct'],['aberturas','Aberturas','int'],['vendas','Vendas','brl'],['qtd','Qtd vendas','int'],['nfe','NF-e','int'],['nfce','NFC-e','int'],['orc','Orçamentos','int'],['usuarios','Usuários/dia (máx)','int'],['ult','Último uso','date']], rows, total:{dias:soma(rows,r=>r.dias),aberturas:soma(rows,r=>r.aberturas),vendas:soma(rows,r=>r.vendas),qtd:soma(rows,r=>r.qtd)}, vazio:'Nenhuma loja.' } ],
+    nota:S.uso.length?'Dados de uso guardados pelos últimos 400 dias.':'Ainda não há dados de uso: eles começam a chegar quando a função "licenca" da Central for publicada de novo (v1.5) e as lojas abrirem o sistema.' }; }
+
+/* ---- atendimentos ---- */
+function atendPeriodo(ini,fim){ return (S.atend||[]).filter(a=>a.data>=ini && a.data<=fim); }
+function telaSuporte(){ if(!S.gerOk) return avisoSqlGer();
+  S.sup=S.sup||{ mes:ymHoje(), loja:'', sit:'' }; const P=S.sup;
+  const noMes=atendPeriodo(P.mes+'-01', ymFimISO(P.mes));
+  const lista=(P.mes==='todos'?S.atend:noMes).filter(a=>(!P.loja||a.tenant===P.loja)&&(!P.sit||a.situacao===P.sit));
+  const abertos=S.atend.filter(a=>a.situacao==='aberto'); const vh=valorHora(); const min=soma(noMes,a=>a.minutos);
+  return `<div class="toolbar noprint"><h3 style="margin:0;font-size:16px">Atendimentos de suporte</h3>
+     <div class="per" style="margin-left:auto"><button class="btn sm" onclick="S.sup.mes=ymAdd(S.sup.mes,-1);render()">‹</button><input type="month" value="${P.mes}" onchange="if(this.value){S.sup.mes=this.value;render()}"><button class="btn sm" onclick="S.sup.mes=ymAdd(S.sup.mes,1);render()">›</button></div></div>
+   <div class="mini"><div><small>Atendimentos em ${ymNome(P.mes)}</small><b>${NUM(noMes.length)}</b></div><div><small>Tempo gasto</small><b>${HMIN(min)}</b></div><div><small>Custo estimado</small><b>${vh?BRL(min/60*vh):'—'}</b></div><div><small>Em aberto (todos)</small><b style="color:${abertos.length?'var(--neg)':'inherit'}">${NUM(abertos.length)}</b></div>
+     <div style="cursor:pointer" onclick="valorHoraModal()" title="Clique para alterar"><small>Valor da sua hora ✎</small><b>${vh?BRL(vh):'definir'}</b></div></div>
+   <div class="toolbar noprint"><button class="btn amber" onclick="atendModal(null)">+ Registrar atendimento</button>
+     <div class="per">${`<select onchange="S.sup.loja=this.value;render()"><option value="">Todas as lojas</option>${S.empresas.map(e=>`<option value="${esc(e.tenant)}" ${P.loja===e.tenant?'selected':''}>${esc(e.nome)}</option>`).join('')}</select>`}
+     <select onchange="S.sup.sit=this.value;render()"><option value="">Todas as situações</option><option value="aberto" ${P.sit==='aberto'?'selected':''}>Em aberto</option><option value="resolvido" ${P.sit==='resolvido'?'selected':''}>Resolvidos</option></select></div></div>
+   ${abertos.length&&P.sit!=='aberto'?`<div class="aviso" style="margin-bottom:12px">${abertos.length} atendimento(s) em aberto — o mais antigo é de ${fD(abertos.map(a=>a.data).sort()[0])}. <a href="#" onclick="S.sup.sit='aberto';S.sup.mes='todos';render();return false">Ver todos em aberto</a></div>`:''}
+   <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Data</th><th>Loja</th><th>Canal</th><th>Motivo</th><th>Descrição</th><th class="n">Tempo</th><th>Situação</th><th class="noprint"></th></tr></thead><tbody>
+   ${lista.map(a=>`<tr><td>${fD(a.data)}</td><td><b>${a.tenant?esc(nomeDe(a.tenant)):'<span class="mut">sem loja</span>'}</b></td><td>${esc(nomeDeLista(CANAIS,a.canal))}</td><td>${esc(nomeDeLista(MOTIVOS,a.motivo))}</td><td class="small">${esc(a.descricao||'')}${a.solucao?`<div class="mut">↳ ${esc(a.solucao)}</div>`:''}</td><td class="n">${HMIN(a.minutos)}</td>
+     <td>${a.situacao==='aberto'?`<span class="tag neg">aberto${a.data<hojeISO()?' '+difDias(hojeISO(),a.data)+'d':''}</span>`:'<span class="tag pos">resolvido</span>'}</td>
+     <td class="noprint" style="white-space:nowrap">${a.situacao==='aberto'?`<button class="btn sm pos" onclick="atendResolver(${a.id})">Resolver</button> `:''}<button class="btn sm" onclick="atendModal(${a.id})">Editar</button></td></tr>`).join('')||`<tr><td colspan="8" class="mut" style="text-align:center;padding:24px">Nenhum atendimento${P.mes!=='todos'?' em '+ymNome(P.mes):''}. Use <b>+ Registrar atendimento</b>.</td></tr>`}
+   </tbody></table></div>
+   <p class="mut small">Registrar cada atendimento (mesmo os rápidos) mostra quanto tempo cada loja consome — isso entra na <b>Rentabilidade por loja</b> e no relatório <b>Suporte</b>.</p>`; }
+function atendModal(id){ if(!S.gerOk){ toast('Rode o central.sql v1.5 primeiro','err'); return; }
+  const a=id?S.atend.find(x=>x.id===id):null; const loja=a?a.tenant:((S.sup&&S.sup.loja)||'');
+  abrirModal(`<h3>${a?'Editar atendimento':'Registrar atendimento'}</h3>
+   <div class="row"><div><label>Loja</label>${selLoja('a-tenant',loja,'— sem loja —')}</div><div><label>Data</label><input id="a-data" type="date" value="${a?a.data:hojeISO()}"></div></div>
+   <div class="row"><div><label>Canal</label>${selDe('a-canal',CANAIS,a?a.canal:'whatsapp')}</div><div><label>Motivo</label>${selDe('a-motivo',MOTIVOS,a?a.motivo:'duvida')}</div></div>
+   <label>Tempo gasto (minutos)</label><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input id="a-min" type="number" min="0" step="1" value="${a?a.minutos:15}" style="max-width:110px">${[5,10,15,30,45,60,90,120].map(m=>`<button type="button" class="btn sm" onclick="$('a-min').value=${m}">${HMIN(m)}</button>`).join('')}</div>
+   <label>O que a loja pediu / qual o problema</label><textarea id="a-desc" rows="2">${esc(a?a.descricao:'')}</textarea>
+   <label>O que foi feito (solução)</label><textarea id="a-sol" rows="2">${esc(a?a.solucao:'')}</textarea>
+   <label>Situação</label><select id="a-sit"><option value="resolvido" ${!a||a.situacao==='resolvido'?'selected':''}>Resolvido</option><option value="aberto" ${a&&a.situacao==='aberto'?'selected':''}>Em aberto (ainda pendente)</option></select>
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">${a?`<button class="btn neg" style="margin-right:auto" onclick="atendExcluir(${a.id})">Excluir</button>`:''}<button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="atendSalvar(${a?a.id:'null'})">Salvar</button></div>`); }
+async function atendSalvar(id){ const a=id?S.atend.find(x=>x.id===id):null; const sit=$('a-sit').value, data=$('a-data').value;
+  if(!data){ toast('Informe a data','err'); return; }
+  const row={ tenant:$('a-tenant').value||null, data, canal:$('a-canal').value, motivo:$('a-motivo').value, minutos:Math.max(0,parseInt($('a-min').value,10)||0),
+    descricao:$('a-desc').value.trim()||null, solucao:$('a-sol').value.trim()||null, situacao:sit, resolvido_em: sit==='resolvido' ? ((a&&a.resolvido_em)||hojeISO()) : null };
+  const r= id? await sb().from('atendimentos').update(row).eq('id',id) : await sb().from('atendimentos').insert(row);
+  if(r.error){ toast(r.error.message,'err'); return; } fecharModal(); toast('Atendimento salvo'); await carregar(); render(); }
+async function atendResolver(id){ const a=S.atend.find(x=>x.id===id); if(!a) return;
+  const sol=prompt('O que foi feito para resolver? (opcional)', a.solucao||''); if(sol===null) return;
+  const r=await sb().from('atendimentos').update({ situacao:'resolvido', resolvido_em:hojeISO(), solucao:sol.trim()||a.solucao||null }).eq('id',id);
+  if(r.error){ toast(r.error.message,'err'); return; } toast('Marcado como resolvido'); await carregar(); render(); }
+async function atendExcluir(id){ if(!confirm('Excluir este atendimento?')) return; const r=await sb().from('atendimentos').delete().eq('id',id);
+  if(r.error){ toast(r.error.message,'err'); return; } fecharModal(); await carregar(); render(); }
+function valorHoraModal(){ abrirModal(`<h3>Valor da sua hora de suporte</h3>
+   <p class="small mut" style="margin:0">Quanto vale 1 hora do seu tempo (ou de quem atende). Serve para calcular o custo de suporte de cada loja — não é lançado como despesa.</p>
+   <label>Valor por hora (R$)</label><input id="vh" type="number" step="0.01" min="0" value="${valorHora()||''}" placeholder="ex.: 80">
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="valorHoraSalvar()">Salvar</button></div>`); }
+async function valorHoraSalvar(){ const v=+$('vh').value; if(!(v>=0)){ toast('Valor inválido','err'); return; }
+  const r=await sb().from('config').upsert({ chave:'valor_hora_suporte', valor:{ v } },{ onConflict:'chave' }); if(r.error){ toast(r.error.message,'err'); return; }
+  fecharModal(); toast('Valor da hora salvo'); await carregar(); render(); }
+function relSuporte(){ const ini=perIni(), fim=perFim(); const L=atendPeriodo(ini,fim); const vh=valorHora(); const minT=soma(L,a=>a.minutos);
+  const meses=ymLista(S.per.ini,S.per.fim);
+  const pl={}; L.forEach(a=>{ const k=a.tenant||''; const x=pl[k]||(pl[k]={k,qtd:0,min:0,ab:0}); x.qtd++; x.min+=+a.minutos||0; if(a.situacao==='aberto') x.ab++; });
+  const lojas=Object.values(pl).map(x=>{ const fat=x.k?soma(meses.flatMap(fatDe).filter(m=>m.tenant===x.k),m=>m.valor):0; const custo=vh?x.min/60*vh:null;
+    return { loja:x.k?nomeDe(x.k):'(sem loja)', qtd:x.qtd, horas:x.min/60, custo, fat:x.k?fat:null, pct:(custo!=null&&fat)?custo/fat:null, ab:x.ab }; }).sort((a,b)=>b.horas-a.horas);
+  const pm={}; L.forEach(a=>{ const x=pm[a.motivo]||(pm[a.motivo]={m:a.motivo,qtd:0,min:0}); x.qtd++; x.min+=+a.minutos||0; });
+  const motivos=Object.values(pm).sort((a,b)=>b.min-a.min).map(x=>({ motivo:nomeDeLista(MOTIVOS,x.m), qtd:x.qtd, horas:x.min/60, pct:minT?x.min/minT:null }));
+  const pc={}; L.forEach(a=>{ pc[a.canal]=(pc[a.canal]||0)+1; });
+  const res=L.filter(a=>a.situacao==='resolvido'&&a.resolvido_em); const tRes=res.length?soma(res,a=>Math.max(0,difDias(a.resolvido_em,a.data)))/res.length:null;
+  return { titulo:'Suporte', desc:'Atendimentos registrados em Suporte › Atendimentos. O custo usa o valor da sua hora ('+(vh?BRL(vh):'ainda não definido — defina na tela de Atendimentos')+'). "% da mensalidade" mostra quanto do que a loja pagou foi consumido em suporte.',
+    kpis:[['Atendimentos',NUM(L.length)],['Tempo total',HMIN(minT)],['Custo estimado',vh?BRL(minT/60*vh):'—'],['Tempo médio',L.length?HMIN(minT/L.length):'—'],['Em aberto',NUM(L.filter(a=>a.situacao==='aberto').length)],['Dias até resolver (média)',tRes==null?'—':tRes.toLocaleString('pt-BR',{maximumFractionDigits:1})]],
+    blocos:[ { titulo:'Horas de suporte por mês', html:barrasNum(meses, meses.map(c=>soma(atendPeriodo(c+'-01',ymFimISO(c)),a=>a.minutos)/60), 'Horas', v=>(+v).toLocaleString('pt-BR',{maximumFractionDigits:1})+'h') },
+      { titulo:'Por loja', cols:[['loja','Loja','b'],['qtd','Atendimentos','int'],['horas','Horas','dec'],['custo','Custo','brl'],['fat','Faturado no período','brl'],['pct','% da mensalidade','pct'],['ab','Em aberto','int']], rows:lojas, total:{qtd:L.length,horas:minT/60,custo:vh?minT/60*vh:null}, vazio:'Nenhum atendimento no período.' },
+      { titulo:'Por motivo', cols:[['motivo','Motivo','b'],['qtd','Atendimentos','int'],['horas','Horas','dec'],['pct','% do tempo','pct']], rows:motivos, total:{qtd:L.length,horas:minT/60,pct:minT?1:null}, vazio:'Nenhum atendimento no período.' },
+      { titulo:'Por canal', cols:[['canal','Canal','b'],['qtd','Atendimentos','int']], rows:Object.entries(pc).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({canal:nomeDeLista(CANAIS,k),qtd:v})), vazio:'—' } ] }; }
+function barrasNum(labels, vals, nome, fmt){ // barras simples para números que não são R$
+  const W=760,H=200,L=50,R=8,T=10,B=26, pw=W-L-R, ph=H-T-B; const max=niceMax(Math.max(0,...vals)); const n=labels.length; const gw=pw/Math.max(n,1), bw=Math.max(3,Math.min(26,gw*0.6));
+  let g=''; for(let i=0;i<=4;i++){ const v=max*i/4, yy=T+ph-(v/max)*ph; g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="${i?'#eef2f7':'#94a3b8'}"/><text x="${L-6}" y="${yy+4}" text-anchor="end" font-size="10.5" fill="#64748b">${fmt(v)}</text>`; }
+  const passo=n>12?Math.ceil(n/12):1; let b='';
+  labels.forEach((lab,i)=>{ const v=+vals[i]||0, x=L+gw*i+(gw-bw)/2, yy=T+ph-(v/max)*ph, h=T+ph-yy, r=Math.min(4,h,bw/2);
+    if(h>0) b+=`<path class="bar" d="M${x},${T+ph} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+bw-r} Q${x+bw},${yy} ${x+bw},${yy+r} V${T+ph} Z" style="fill:var(--s1)"><title>${esc(ymNome(lab))} · ${esc(nome)}: ${fmt(v)}</title></path>`;
+    if(i%passo===0) b+=`<text x="${L+gw*i+gw/2}" y="${H-8}" text-anchor="middle" font-size="10.5" fill="#64748b">${esc(ymNome(lab))}</text>`; });
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(nome)} por mês">${g}${b}</svg></div>`; }
+
+/* ---- mudanças de contrato (relatório) ---- */
+function relContratos(){ const ini=perIni(), fim=perFim();
+  const rows=[]; Object.entries(S.histPor||{}).forEach(([t,hs])=>{ hs.forEach((h,i)=>{ if(h.vigente_desde<ini||h.vigente_desde>fim) return; const ant=i>0?hs[i-1]:null;
+    const va=ant?(+ant.valor_mensal||0):null, vn=+h.valor_mensal||0;
+    rows.push({ data:h.vigente_desde, loja:nomeDe(t), tipo:tg(tipoContratoNome(h.tipo),TIPO_COR[h.tipo]||'mut'), _t:h.tipo, plano:(ant&&ant.plano!==h.plano?(ant.plano||'—')+' → ':'')+(h.plano||''), va, vn, dif:va==null?null:vn-va, pct:(va?((vn-va)/va):null), obs:h.obs||'' }); }); });
+  rows.sort((a,b)=>b.data.localeCompare(a.data));
+  const c=t=>rows.filter(r=>r._t===t).length; const liq=soma(rows.filter(r=>r.dif!=null && !['inicio'].includes(r._t)),r=>r.dif);
+  return { titulo:'Mudanças de contrato', desc:'Tudo o que mudou nos contratos no período: novos, reajustes, upgrades, downgrades, cancelamentos e reativações. É esse histórico que deixa a receita de cada mês correta nos relatórios.',
+    kpis:[['Novos contratos',NUM(c('inicio'))],['Reajustes',NUM(c('reajuste'))],['Upgrades',NUM(c('upgrade')),'var(--pos)'],['Downgrades',NUM(c('downgrade')),c('downgrade')?'var(--neg)':''],['Cancelamentos',NUM(c('cancelamento')),c('cancelamento')?'var(--neg)':''],['Variação na receita mensal',BRL(liq),liq<0?'var(--neg)':'var(--pos)']],
+    blocos:[ { titulo:'Mudanças', cols:[['data','Vale desde','date'],['loja','Loja','b'],['tipo','Tipo','tag'],['plano','Plano','txt'],['va','Valor anterior','brl'],['vn','Valor novo','brl'],['dif','Diferença','brl'],['pct','Variação','pct'],['obs','Obs.','txt']], rows, vazio:'Nenhuma mudança de contrato no período.' } ] }; }
+
+/* ---- fechamento do mês ---- */
+function dadosDoMes(c){ const ini=c+'-01', fim=ymFimISO(c), ant=ymAdd(c,-1);
+  const at=ativosEm(c), antA=ativosEm(ant);
+  const novos=S.empresas.filter(e=>(ativadaDe(e)||'').slice(0,7)===c), canc=S.empresas.filter(e=>(e.cancelado_em||'').slice(0,7)===c);
+  const fm=fatDe(c), ks=custosDe(c), L=atendPeriodo(ini,fim), vh=valorHora();
+  const faturado=soma(fm,m=>m.valor), recebido=soma(pagosEntre(ini,fim),m=>m.valor_pago);
+  const impostos=soma(ks.filter(k=>k.categoria==='impostos'),k=>k.valor), custos=soma(ks,k=>k.valor);
+  const aberto=soma(S.mens.filter(m=>m.situacao==='aberta' && m.vencimento<=fim),m=>m.valor);
+  const minT=soma(L,a=>a.minutos);
+  const lojas=S.empresas.filter(e=>at.includes(e)||fm.some(m=>m.tenant===e.tenant)||canc.includes(e)).map(e=>{ const f=fm.filter(m=>m.tenant===e.tenant);
+    return { tenant:e.tenant, nome:e.nome, situacao:sitTxt(e)[0], valor:valorEm(e,c), faturado:soma(f,m=>m.valor), recebido:soma(f.filter(m=>m.situacao==='paga'),m=>m.valor_pago),
+      em_aberto:soma(f.filter(m=>m.situacao==='aberta'),m=>m.valor), custos_diretos:soma(ks.filter(k=>k.tenant===e.tenant),k=>k.valor),
+      horas_suporte:Math.round(soma(L.filter(a=>a.tenant===e.tenant),a=>a.minutos)/6)/10, dias_uso:diasAtivos(e.tenant,ini,fim) }; });
+  return { competencia:c, mrr:soma(at,e=>valorEm(e,c)), clientes:at.length, novos:novos.length, cancelados:canc.length, churn:antA.length?canc.length/antA.length:null,
+    faturado, recebido, impostos, custos, resultado:faturado-custos, margem:faturado?(faturado-custos)/faturado:null, a_receber_ate_fim:aberto,
+    atendimentos:L.length, horas_suporte:Math.round(minT/6)/10, custo_suporte:vh?minT/60*vh:null, valor_hora:vh||null,
+    dias_uso_medio:lojas.length?soma(lojas,l=>l.dias_uso)/lojas.length:null, lojas }; }
+function telaFechamento(){ if(!S.gerOk) return avisoSqlGer();
+  const hj=ymHoje(); const fechados=new Map(S.fech.map(f=>[f.competencia,f]));
+  const pend=[1,2,3].map(n=>ymAdd(hj,-n)).filter(c=>!fechados.has(c) && (S.mens.some(m=>m.competencia===c)||S.custos.some(k=>k.competencia===c)));
+  const sug=pend[pend.length-1]||ymAdd(hj,-1);
+  const lista=S.fech.slice().sort((a,b)=>b.competencia.localeCompare(a.competencia));
+  const linhas=lista.map((f,i)=>{ const d=f.dados||{}; const prev=lista[i+1]&&lista[i+1].dados; const vm=prev&&prev.mrr?(d.mrr-prev.mrr)/prev.mrr:null;
+    return `<tr><td><b>${ymNome(f.competencia)}</b><div class="mut small">${fDH(f.fechado_em)}</div></td><td class="n">${BRL(d.mrr)}${vm!=null?`<div class="small" style="color:${vm<0?'var(--neg)':'var(--pos)'}">${vm>0?'+':''}${PCT(vm)}</div>`:''}</td><td class="n">${NUM(d.clientes)}</td><td class="n">${BRL(d.faturado)}</td><td class="n">${BRL(d.recebido)}</td><td class="n">${BRL(d.custos)}</td><td class="n" style="color:${d.resultado<0?'var(--neg)':'inherit'}">${BRL(d.resultado)}</td><td class="n">${PCT(d.margem)}</td><td class="n">${d.horas_suporte!=null?(+d.horas_suporte).toLocaleString('pt-BR')+'h':'—'}</td>
+      <td class="noprint" style="white-space:nowrap"><button class="btn sm" onclick="fechVer('${f.competencia}')">Ver</button> <button class="btn sm neg" onclick="fechReabrir('${f.competencia}')">Reabrir</button></td></tr>`; }).join('');
+  return `<div class="toolbar noprint"><h3 style="margin:0;font-size:16px">Fechamento do mês</h3>
+     <div class="per" style="margin-left:auto"><span class="small mut">Fechar</span><input type="month" id="fe-mes" value="${sug}" max="${hj}"><button class="btn amber" onclick="fechFechar($('fe-mes').value)">Fechar mês</button></div></div>
+   ${pend.length?`<div class="aviso" style="margin-bottom:12px">Mês(es) já encerrado(s) e ainda não fechado(s): <b>${pend.map(ymNome).join(', ')}</b>. Confira mensalidades e custos e feche para guardar a foto dos números.</div>`:''}
+   <div class="card"><p class="sub" style="margin:0">Fechar um mês guarda uma <b>foto</b> dos números (receita mensal, clientes, faturado, recebido, custos, resultado, suporte e uso por loja). Se alguém mudar um lançamento depois, a foto não muda — e o botão <b>Ver</b> mostra a diferença para os números de hoje.</p></div>
+   <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Mês</th><th class="n">Receita mensal (MRR)</th><th class="n">Clientes</th><th class="n">Faturado</th><th class="n">Recebido</th><th class="n">Custos</th><th class="n">Resultado</th><th class="n">Margem</th><th class="n">Suporte</th><th class="noprint"></th></tr></thead><tbody>
+   ${linhas||'<tr><td colspan="10" class="mut" style="text-align:center;padding:24px">Nenhum mês fechado ainda.</td></tr>'}</tbody></table></div>`; }
+async function fechFechar(c){ if(!/^\d{4}-\d{2}$/.test(c||'')){ toast('Escolha o mês','err'); return; }
+  if(S.fech.some(f=>f.competencia===c)){ toast(ymNome(c)+' já está fechado — reabra antes para fechar de novo','err'); return; }
+  const d=dadosDoMes(c); const hj=ymHoje();
+  const aviso = c>=hj ? '\n\nATENÇÃO: '+ymNome(c)+' ainda não terminou — os números podem mudar.' : '';
+  const abertas=S.mens.filter(m=>m.competencia===c && m.situacao==='aberta').length;
+  if(!confirm('Fechar '+ymNome(c)+'?\n\nReceita mensal: '+BRL(d.mrr)+'\nFaturado: '+BRL(d.faturado)+'  ·  Recebido: '+BRL(d.recebido)+'\nCustos: '+BRL(d.custos)+'  ·  Resultado: '+BRL(d.resultado)+(abertas?'\n\n'+abertas+' mensalidade(s) do mês ainda em aberto (ficam registradas assim).':'')+aviso)) return;
+  const r=await sb().from('fechamentos').insert({ competencia:c, dados:d, fechado_por:(S.user&&S.user.email)||null });
+  if(r.error){ toast(r.error.message,'err'); return; }
+  try{ await sb().from('eventos').insert({ tenant:null, tipo:'mes_fechado', detalhe:ymNome(c)+' · MRR '+BRL(d.mrr)+' · resultado '+BRL(d.resultado) }); }catch(e){}
+  toast(ymNome(c)+' fechado'); await carregar(); render(); }
+async function fechReabrir(c){ if(!confirm('Reabrir '+ymNome(c)+'? A foto guardada será apagada (você pode fechar de novo depois).')) return;
+  const r=await sb().from('fechamentos').delete().eq('competencia',c); if(r.error){ toast(r.error.message,'err'); return; }
+  try{ await sb().from('eventos').insert({ tenant:null, tipo:'mes_reaberto', detalhe:ymNome(c) }); }catch(e){}
+  toast(ymNome(c)+' reaberto'); await carregar(); render(); }
+function fechVer(c){ const f=S.fech.find(x=>x.competencia===c); if(!f) return; const d=f.dados||{}, h=dadosDoMes(c);
+  const n=v=>v==null?'—':NUM(v), hr=v=>v==null?'—':(+v).toLocaleString('pt-BR',{maximumFractionDigits:1})+'h', pc=v=>v==null?'—':PCT(v), br=v=>v==null?'—':BRL(v);
+  const lin=(l,k,fmt)=>{ const a=d[k], b=h[k]; const dif=(typeof a==='number'&&typeof b==='number')?b-a:null; const mud=dif!=null&&Math.abs(dif)>0.0004;
+    const fd = fmt===pc ? (v=>(v*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+' p.p.') : fmt;
+    return `<tr><td>${l}</td><td class="n"><b>${fmt(a)}</b></td><td class="n ${mud?'':'mut'}">${fmt(b)}</td><td class="n" style="color:${mud?'var(--amber-d)':'var(--mut)'}">${mud?(dif>0?'+':'')+fd(dif):'='}</td></tr>`; };
+
+  abrirModal(`<h3>Fechamento de ${ymNome(c)}</h3><p class="mut small" style="margin:0 0 8px">Fechado em ${fDH(f.fechado_em)}${f.fechado_por?' por '+esc(f.fechado_por):''}. Coluna "hoje" = recalculado agora; diferenças em laranja.</p>
+   <div style="overflow-x:auto"><table><thead><tr><th></th><th class="n">Fechado</th><th class="n">Hoje</th><th class="n">Diferença</th></tr></thead><tbody>
+   ${lin('Receita mensal (MRR)','mrr',br)}${lin('Clientes ativos','clientes',n)}${lin('Novos','novos',n)}${lin('Cancelados','cancelados',n)}${lin('Churn','churn',pc)}
+   ${lin('Faturado','faturado',br)}${lin('Recebido','recebido',br)}${lin('Impostos','impostos',br)}${lin('Custos (com impostos)','custos',br)}${lin('Resultado','resultado',br)}${lin('Margem','margem',pc)}
+   ${lin('A receber até o fim do mês','a_receber_ate_fim',br)}${lin('Atendimentos','atendimentos',n)}${lin('Horas de suporte','horas_suporte',hr)}${lin('Custo de suporte','custo_suporte',br)}</tbody></table></div>
+   <h4 style="margin:14px 0 6px">Lojas no fechamento</h4>
+   <div style="overflow-x:auto"><table><thead><tr><th>Loja</th><th>Situação</th><th class="n">Mensal</th><th class="n">Faturado</th><th class="n">Recebido</th><th class="n">Em aberto</th><th class="n">Suporte</th><th class="n">Dias de uso</th></tr></thead><tbody>
+   ${(d.lojas||[]).map(l=>`<tr><td><b>${esc(l.nome)}</b></td><td>${esc(l.situacao||'')}</td><td class="n">${BRL(l.valor)}</td><td class="n">${BRL(l.faturado)}</td><td class="n">${BRL(l.recebido)}</td><td class="n">${BRL(l.em_aberto)}</td><td class="n">${hr(l.horas_suporte)}</td><td class="n">${n(l.dias_uso)}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">—</td></tr>'}
+   </tbody></table></div>
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="window.print()">Imprimir</button><button class="btn" onclick="fecharModal()">Fechar</button></div>`); }
+
+/* =====================================================================
    RELATÓRIOS (v1.2) — financeiros e gerenciais
    ===================================================================== */
 const RELS = [
   ['Financeiros', [['dre','Resultado mensal'],['receb','Recebimentos'],['inad','Inadimplência'],['lojas','Rentabilidade por loja'],['custos','Custos'],['prev','Previsão de receita']]],
-  ['Gerenciais',  [['saas','Indicadores SaaS'],['carteira','Carteira de clientes'],['saude','Saúde e risco'],['venc','Vencimentos'],['ocorr','Ocorrências de licença']]]
+  ['Gerenciais',  [['saas','Indicadores SaaS'],['contratos','Mudanças de contrato'],['carteira','Carteira de clientes'],['uso','Uso das lojas'],['saude','Saúde e risco'],['suporte','Suporte'],['venc','Vencimentos'],['ocorr','Ocorrências de licença']]]
 ];
-const REL_PERIODO = { dre:1, receb:1, lojas:1, custos:1, saas:1, ocorr:1 };
+const REL_PERIODO = { dre:1, receb:1, lojas:1, custos:1, saas:1, ocorr:1, uso:1, suporte:1, contratos:1 };
+const REL_PRECISA_GER = { uso:1, suporte:1, contratos:1 };
 const REL_PRECISA_FIN = { dre:1, receb:1, inad:1, lojas:1, custos:1 };
-const TIPO_NOME = { empresa_criada:'Loja criada', empresa_editada:'Cadastro editado', suspensa:'Suspensa', reativada:'Reativada', renovada:'Renovada', pagamento:'Pagamento', pagamento_estornado:'Pagamento estornado', contrato_encerrado:'Contrato encerrado', licenca_invalida:'Licença inválida', licenca_bloqueada:'Bloqueio aplicado' };
+const TIPO_NOME = { empresa_criada:'Loja criada', empresa_editada:'Cadastro editado', suspensa:'Suspensa', reativada:'Reativada', renovada:'Renovada', pagamento:'Pagamento', pagamento_estornado:'Pagamento estornado', contrato_encerrado:'Contrato encerrado', licenca_invalida:'Licença inválida', licenca_bloqueada:'Bloqueio aplicado', mes_fechado:'Mês fechado', mes_reaberto:'Mês reaberto' };
 
 /* ---- bases ---- */
 const fatDe = c => S.mens.filter(m=>m.competencia===c && m.situacao!=='cancelada');
@@ -614,7 +880,8 @@ function telaRelatorios(){ if(!S.per.ini){ S.per.fim=ymHoje(); S.per.ini=ymAdd(S
       : S.rel==='prev'?`<div class="per"><span class="small mut">Horizonte</span><select onchange="S.prevN=+this.value;render()">${[3,6,12].map(n=>`<option value="${n}" ${S.prevN===n?'selected':''}>${n} meses</option>`).join('')}</select></div>`:`<span class="small mut">Posição de hoje, ${fD(hojeISO())}</span>`}
       <div style="margin-left:auto;display:flex;gap:6px"><button class="btn" onclick="window.print()">Imprimir / PDF</button><button class="btn" onclick="exportarCSV()">Exportar planilha (CSV)</button></div></div>`;
   if(REL_PRECISA_FIN[S.rel] && !S.finOk){ S._rel=null; return nav+avisoSql(); }
-  const fn={ dre:relDRE, receb:relReceb, inad:relInad, lojas:relLojas, custos:relCustos, prev:relPrev, saas:relSaaS, carteira:relCarteira, saude:relSaude, venc:relVenc, ocorr:relOcorr }[S.rel] || relDRE;
+  if(REL_PRECISA_GER[S.rel] && !S.gerOk){ S._rel=null; return nav+avisoSqlGer(); }
+  const fn={ dre:relDRE, receb:relReceb, inad:relInad, lojas:relLojas, custos:relCustos, prev:relPrev, saas:relSaaS, carteira:relCarteira, saude:relSaude, venc:relVenc, ocorr:relOcorr, uso:relUso, suporte:relSuporte, contratos:relContratos }[S.rel] || relDRE;
   const r=fn(); r.periodo = temPer ? ('Período: '+ymNome(S.per.ini)+(S.per.ini!==S.per.fim?' a '+ymNome(S.per.fim):'')) : (S.rel==='prev'?'Próximos '+S.prevN+' meses':'Posição em '+fD(hojeISO()));
   S._rel=r;
   return nav+ctl+`<div class="printhead"><h2 style="margin:0">Central GestãoPro — ${esc(r.titulo)}</h2><div class="small mut">${esc(r.periodo)} · emitido em ${fDH(new Date().toISOString())}</div></div>
@@ -627,12 +894,13 @@ function telaRelatorios(){ if(!S.per.ini){ S.per.fim=ymHoje(); S.per.ini=ymAdd(S
 function relDRE(){ const meses=ymLista(S.per.ini,S.per.fim);
   const rows=meses.map(c=>{ const fat=soma(fatDe(c),m=>m.valor), rec=soma(pagosEntre(c+'-01',ymFimISO(c)),m=>m.valor_pago), ks=custosDe(c);
     const imp=soma(ks.filter(k=>k.categoria==='impostos'),k=>k.valor), dir=soma(ks.filter(k=>k.tenant&&k.categoria!=='impostos'),k=>k.valor), ger=soma(ks.filter(k=>!k.tenant&&k.categoria!=='impostos'),k=>k.valor), ct=imp+dir+ger;
-    return { c, fat, imp, liq:fat-imp, dir, ger, ct, res:fat-ct, marg:fat?(fat-ct)/fat:null, rec, caixa:rec-ct }; });
+    const fe=S.gerOk&&S.fech.some(f=>f.competencia===c);
+    return { c, fat, imp, liq:fat-imp, dir, ger, ct, res:fat-ct, marg:fat?(fat-ct)/fat:null, rec, caixa:rec-ct, fech:S.gerOk?tg(fe?'fechado':'aberto',fe?'pos':'mut'):null }; });
   const T={}; ['fat','imp','liq','dir','ger','ct','res','rec','caixa'].forEach(k=>T[k]=soma(rows,r=>r[k])); T.marg=T.fat?T.res/T.fat:null;
   return { titulo:'Resultado mensal (DRE simplificado)', desc:'Receita pela <b>competência</b> das mensalidades (canceladas ficam fora) menos impostos e custos lançados no mês. As duas últimas colunas mostram o <b>caixa</b>: o que entrou de fato (pela data do pagamento) menos os mesmos custos.',
     kpis:[['Receita faturada',BRL(T.fat)],['Recebido (caixa)',BRL(T.rec),'var(--pos)'],['Custos + impostos',BRL(T.ct)],['Resultado',BRL(T.res),T.res<0?'var(--neg)':'var(--pos)'],['Margem',PCT(T.marg)],['Resultado médio / mês',BRL(T.res/meses.length)]],
     blocos:[ { titulo:'Receita faturada x custos', html:barras(meses,[{nome:'Receita faturada',cor:'var(--s1)',vals:rows.map(r=>r.fat)},{nome:'Custos + impostos',cor:'var(--s2)',vals:rows.map(r=>r.ct)}]) },
-      { titulo:'Demonstrativo por mês', cols:[['c','Mês','ym'],['fat','Receita faturada','brl'],['imp','(−) Impostos','brl'],['liq','Receita líquida','brl'],['dir','(−) Custos diretos','brl'],['ger','(−) Custos gerais','brl'],['res','Resultado','brl'],['marg','Margem','pct'],['rec','Recebido (caixa)','brl'],['caixa','Saldo de caixa','brl']], rows, total:T } ] }; }
+      { titulo:'Demonstrativo por mês', cols:[['c','Mês','ym'],['fat','Receita faturada','brl'],['imp','(−) Impostos','brl'],['liq','Receita líquida','brl'],['dir','(−) Custos diretos','brl'],['ger','(−) Custos gerais','brl'],['res','Resultado','brl'],['marg','Margem','pct'],['rec','Recebido (caixa)','brl'],['caixa','Saldo de caixa','brl'],['fech','Mês','tag']], rows, total:T } ] }; }
 
 function relReceb(){ const lista=pagosEntre(perIni(),perFim()).sort((a,b)=>a.pago_em.localeCompare(b.pago_em));
   const rows=lista.map(m=>{ const atraso=Math.max(0,difDias(m.pago_em,m.vencimento)); return { data:m.pago_em, loja:nomeDe(m.tenant), comp:m.competencia, valor:+m.valor, pago:+m.valor_pago, dif:(+m.valor_pago)-(+m.valor), forma:formaNome(m.forma), atraso, st:atraso?tg('atraso '+atraso+'d','warn'):tg('em dia','pos') }; });
@@ -672,15 +940,19 @@ function relLojas(){ const meses=ymLista(S.per.ini,S.per.fim); const L={}; let n
     ks.filter(k=>k.tenant).forEach(k=>get(k.tenant).dir+=+k.valor);
     if(ft>0){ const por={}; fm.forEach(m=>por[m.tenant]=(por[m.tenant]||0)+(+m.valor)); Object.entries(por).forEach(([t,v])=>get(t).rat+=rateavel*v/ft); } else naoRat+=rateavel; });
   const fatTot=soma(Object.values(L),l=>l.fat);
+  const vh=S.gerOk?valorHora():0; const supMin={}; if(S.gerOk) atendPeriodo(perIni(),perFim()).forEach(a=>{ if(a.tenant) supMin[a.tenant]=(supMin[a.tenant]||0)+(+a.minutos||0); });
   const rows=Object.values(L).map(l=>{ const e=S.empresas.find(x=>x.tenant===l.tenant)||{}; const res=l.fat-l.dir-l.rat;
-    return { loja:e.nome||l.tenant, plano:e.plano||'', sit:tg(...sitTxt(e)), meses:l.meses, fat:l.fat, rec:l.rec, aberto:l.aberto, dir:l.dir, rat:l.rat, res, marg:l.fat?res/l.fat:null, part:fatTot?l.fat/fatTot:null }; }).sort((a,b)=>b.res-a.res);
+    const horas=(supMin[l.tenant]||0)/60, sup=vh?horas*vh:null, res2=sup!=null?res-sup:null;
+    return { loja:e.nome||l.tenant, plano:e.plano||'', sit:tg(...sitTxt(e)), meses:l.meses, fat:l.fat, rec:l.rec, aberto:l.aberto, dir:l.dir, rat:l.rat, res, marg:l.fat?res/l.fat:null, horas:S.gerOk?horas:null, sup, res2, marg2:(res2!=null&&l.fat)?res2/l.fat:null, part:fatTot?l.fat/fatTot:null }; }).sort((a,b)=>b.res-a.res);
   if(naoRat>0) rows.push({ loja:'Custos gerais sem receita no mês (não rateados)', rat:naoRat, res:-naoRat });
-  const T={}; ['meses','fat','rec','aberto','dir','rat','res'].forEach(k=>T[k]=soma(rows,r=>r[k])); T.marg=T.fat?T.res/T.fat:null; T.part=fatTot?1:null;
+  const T={}; ['meses','fat','rec','aberto','dir','rat','res','horas'].forEach(k=>T[k]=soma(rows,r=>r[k])); T.marg=T.fat?T.res/T.fat:null; T.part=fatTot?1:null;
+  if(vh){ T.sup=soma(rows,r=>r.sup); T.res2=T.res-T.sup; T.marg2=T.fat?T.res2/T.fat:null; }
   const lj=rows.filter(r=>r.plano!==undefined && r.fat>0); const prej=lj.filter(r=>r.res<0);
   return { titulo:'Rentabilidade por loja', desc:'Receita faturada de cada loja no período menos os custos lançados para ela (diretos) e a parte dos custos gerais — rateados na proporção da receita de cada mês.',
-    kpis:[['Lojas com receita',NUM(lj.length)],['Receita média por loja',BRL(lj.length?fatTot/lj.length:0)],['Resultado total',BRL(T.res),T.res<0?'var(--neg)':'var(--pos)'],['Mais rentável',lj[0]?esc(lj[0].loja):'—'],['Lojas com prejuízo',NUM(prej.length),prej.length?'var(--neg)':'']],
+    kpis:[['Lojas com receita',NUM(lj.length)],['Receita média por loja',BRL(lj.length?fatTot/lj.length:0)],['Resultado total',BRL(T.res),T.res<0?'var(--neg)':'var(--pos)'],['Mais rentável',lj[0]?esc(lj[0].loja):'—'],['Lojas com prejuízo',NUM(prej.length),prej.length?'var(--neg)':''],['Custo do seu suporte',vh?BRL(T.sup):(S.gerOk?'defina o valor da hora':'—')]],
     blocos:[ { titulo:'Participação na receita', html:hbarras(lj.slice().sort((a,b)=>b.fat-a.fat).slice(0,12).map(r=>({l:r.loja,v:r.fat,x:PCT(r.part)}))) },
-      { titulo:'Resultado por loja', cols:[['loja','Loja','b'],['plano','Plano','txt'],['sit','Situação','tag'],['meses','Meses cobrados','int'],['fat','Faturado','brl'],['rec','Recebido','brl'],['aberto','Em aberto','brl'],['dir','Custos diretos','brl'],['rat','Rateio gerais','brl'],['res','Resultado','brl'],['marg','Margem','pct'],['part','% receita','pct']], rows, total:T, vazio:'Nenhuma mensalidade no período.' } ] }; }
+      { titulo:'Resultado por loja', cols:[['loja','Loja','b'],['plano','Plano','txt'],['sit','Situação','tag'],['meses','Meses cobrados','int'],['fat','Faturado','brl'],['rec','Recebido','brl'],['aberto','Em aberto','brl'],['dir','Custos diretos','brl'],['rat','Rateio gerais','brl'],['res','Resultado','brl'],['marg','Margem','pct'],['horas','Horas de suporte','dec'],['sup','Custo do suporte','brl'],['res2','Resultado após suporte','brl'],['marg2','Margem após suporte','pct'],['part','% receita','pct']], rows, total:T, vazio:'Nenhuma mensalidade no período.' } ],
+    nota:'"Após suporte" desconta as horas registradas em Suporte › Atendimentos × valor da sua hora. Esse custo não entra no Resultado mensal (é o seu tempo, não uma despesa paga).' }; }
 
 function relCustos(){ const meses=ymLista(S.per.ini,S.per.fim); const set=new Set(meses); const ks=S.custos.filter(k=>set.has(k.competencia)).sort((a,b)=>a.data.localeCompare(b.data));
   const tot=soma(ks,k=>k.valor), n=meses.length, fat=soma(meses.flatMap(fatDe),m=>m.valor);
@@ -712,19 +984,23 @@ function relPrev(){ const N=S.prevN, meses=ymLista(ymHoje(),ymAdd(ymHoje(),N-1))
 /* ---- GERENCIAIS ---- */
 function relSaaS(){ const meses=ymLista(S.per.ini,S.per.fim);
   const rows=meses.map(c=>{ const at=ativosEm(c), ant=ativosEm(ymAdd(c,-1)); const novos=S.empresas.filter(e=>(ativadaDe(e)||'').slice(0,7)===c), canc=S.empresas.filter(e=>(e.cancelado_em||'').slice(0,7)===c);
-    const mrr=soma(at,e=>e.valor_mensal); return { c, ativos:at.length, novos:novos.length, canc:canc.length, churn:ant.length?canc.length/ant.length:null, mrr, mnovo:soma(novos,e=>e.valor_mensal), mperd:soma(canc,e=>e.valor_mensal), arpa:at.length?mrr/at.length:null, _base:ant.length }; });
+    const pc=ymAdd(c,-1); const mrr=soma(at,e=>valorEm(e,c)); let exp=0, contr=0;
+    at.forEach(e=>{ if(novos.includes(e) || !ant.includes(e)) return; const d=valorEm(e,c)-valorEm(e,pc); if(d>0) exp+=d; else contr-=d; });
+    return { c, ativos:at.length, novos:novos.length, canc:canc.length, churn:ant.length?canc.length/ant.length:null, mrr, mnovo:soma(novos,e=>valorEm(e,c)), exp, contr, mperd:soma(canc,e=>valorEm(e,pc)), arpa:at.length?mrr/at.length:null, _base:ant.length }; });
+  const mrrIni=soma(ativosEm(ymAdd(S.per.ini,-1)),e=>valorEm(e,ymAdd(S.per.ini,-1)));
+  const nrr=mrrIni?(mrrIni+soma(rows,r=>r.exp)-soma(rows,r=>r.contr)-soma(rows,r=>r.mperd))/mrrIni:null;
   const baseTot=soma(rows,r=>r._base), cancTot=soma(rows,r=>r.canc), churnMed=baseTot?cancTot/baseTot:null;
   const pagH=pagantesHoje(), mrr=mrrAtual(), arpa=pagH.length?mrr/pagH.length:0;
   const ltv=churnMed>0?arpa/churnMed:null; const casa=pagH.map(mesesDeCasa).filter(x=>x!=null);
   const criados=S.empresas.filter(e=>{ const d=String(e.criado_em||'').slice(0,10); return d>=perIni()&&d<=perFim(); }); const conv=criados.filter(e=>e.ativada_em||e.status!=='teste');
   const testesAbertos=S.empresas.filter(e=>!e.cancelado_em && e.status==='teste').length;
-  const canc=S.empresas.filter(e=>e.cancelado_em && e.cancelado_em>=perIni() && e.cancelado_em<=perFim()).map(e=>({ loja:e.nome, desde:ativadaDe(e), em:e.cancelado_em, casa:mesesDeCasa(e), valor:+e.valor_mensal||0, pago:soma(S.mens.filter(m=>m.tenant===e.tenant&&m.situacao==='paga'),m=>m.valor_pago), motivo:e.motivo_cancelamento||'' }));
+  const canc=S.empresas.filter(e=>e.cancelado_em && e.cancelado_em>=perIni() && e.cancelado_em<=perFim()).map(e=>({ loja:e.nome, desde:ativadaDe(e), em:e.cancelado_em, casa:mesesDeCasa(e), valor:valorEm(e,ymAdd(e.cancelado_em.slice(0,7),-1)), pago:soma(S.mens.filter(m=>m.tenant===e.tenant&&m.situacao==='paga'),m=>m.valor_pago), motivo:e.motivo_cancelamento||'' }));
   return { titulo:'Indicadores SaaS', desc:'Saúde do negócio de licenças. Um cliente conta como ativo no mês entre a data "cliente pagante desde" e o encerramento do contrato. Churn = contratos encerrados no mês ÷ clientes ativos no fim do mês anterior.',
-    kpis:[['MRR hoje',BRL(mrr)],['ARR',BRL(mrr*12)],['Clientes pagantes',NUM(pagH.length)],['Ticket médio (ARPA)',BRL(arpa)],['Churn médio mensal',churnMed==null?'—':PCT(churnMed),churnMed>0.03?'var(--neg)':''],['LTV estimado',ltv==null?'—':BRL(ltv)],['Tempo médio de casa',casa.length?(soma(casa,x=>x)/casa.length).toLocaleString('pt-BR',{maximumFractionDigits:1})+' meses':'—'],['Conversão de testes',criados.length?PCT(conv.length/criados.length)+` <span class="mut small" style="font-weight:400">(${conv.length}/${criados.length})</span>`:'—'],['Testes em andamento',NUM(testesAbertos),'var(--info)']],
+    kpis:[['MRR hoje',BRL(mrr)],['ARR',BRL(mrr*12)],['Clientes pagantes',NUM(pagH.length)],['Ticket médio (ARPA)',BRL(arpa)],['Churn médio mensal',churnMed==null?'—':PCT(churnMed),churnMed>0.03?'var(--neg)':''],['LTV estimado',ltv==null?'—':BRL(ltv)],['Tempo médio de casa',casa.length?(soma(casa,x=>x)/casa.length).toLocaleString('pt-BR',{maximumFractionDigits:1})+' meses':'—'],['Conversão de testes',criados.length?PCT(conv.length/criados.length)+` <span class="mut small" style="font-weight:400">(${conv.length}/${criados.length})</span>`:'—'],['Testes em andamento',NUM(testesAbertos),'var(--info)'],['Retenção de receita (NRR)',nrr==null?'—':PCT(nrr),nrr!=null&&nrr<1?'var(--neg)':'var(--pos)']],
     blocos:[ { titulo:'MRR contratado por mês', html:barras(meses,[{nome:'MRR',cor:'var(--s1)',vals:rows.map(r=>r.mrr)}]) },
-      { titulo:'Evolução mensal', cols:[['c','Mês','ym'],['ativos','Clientes ativos','int'],['novos','Novos','int'],['canc','Cancelados','int'],['churn','Churn','pct'],['mrr','MRR','brl'],['mnovo','MRR novo','brl'],['mperd','MRR perdido','brl'],['arpa','Ticket médio','brl']], rows, total:{_label:'Período',novos:soma(rows,r=>r.novos),canc:cancTot,churn:churnMed,mnovo:soma(rows,r=>r.mnovo),mperd:soma(rows,r=>r.mperd)} },
+      { titulo:'Evolução mensal', cols:[['c','Mês','ym'],['ativos','Clientes ativos','int'],['novos','Novos','int'],['canc','Cancelados','int'],['churn','Churn','pct'],['mrr','MRR','brl'],['mnovo','MRR novo','brl'],['exp','Expansão','brl'],['contr','Contração','brl'],['mperd','MRR perdido','brl'],['arpa','Ticket médio','brl']], rows, total:{_label:'Período',novos:soma(rows,r=>r.novos),canc:cancTot,churn:churnMed,mnovo:soma(rows,r=>r.mnovo),exp:soma(rows,r=>r.exp),contr:soma(rows,r=>r.contr),mperd:soma(rows,r=>r.mperd)} },
       { titulo:'Cancelamentos no período', cols:[['loja','Loja','b'],['desde','Cliente desde','date'],['em','Encerrado em','date'],['casa','Meses de casa','dec'],['valor','Mensal','brl'],['pago','Total pago','brl'],['motivo','Motivo','txt']], rows:canc, total:{valor:soma(canc,r=>r.valor),pago:soma(canc,r=>r.pago)}, vazio:'Nenhum contrato encerrado no período.' } ],
-    nota:(ltv==null?'LTV aparece quando houver pelo menos um cancelamento no período (sem churn ele fica indefinido). ':'LTV = ticket médio ÷ churn médio mensal. ')+'O MRR por mês conta todos os contratos não encerrados (inclui suspensas) e usa o valor mensal atual do cadastro; o "MRR hoje" conta só as lojas em dia.' }; }
+    nota:(ltv==null?'LTV aparece quando houver pelo menos um cancelamento no período (sem churn ele fica indefinido). ':'LTV = ticket médio ÷ churn médio mensal. ')+'O MRR por mês conta todos os contratos não encerrados (inclui suspensas) e usa o valor que valia em cada mês (histórico de contrato). Expansão = reajustes/upgrades; contração = descontos/downgrades. NRR = (MRR do início + expansão − contração − perdido) ÷ MRR do início — acima de 100% a base cresce sozinha. O "MRR hoje" conta só as lojas em dia.' }; }
 
 function relCarteira(){ const todas=S.empresas, viv=todas.filter(e=>!e.cancelado_em);
   const grp=(lista,chave)=>{ const g={}; lista.forEach(e=>{ const k=chave(e)||'(não informado)'; const x=g[k]||(g[k]={k,lojas:0,mrr:0}); x.lojas++; if(e.status!=='teste'&&!situacao(e).bloq) x.mrr+=+e.valor_mensal||0; }); return Object.values(g).sort((a,b)=>b.mrr-a.mrr||b.lojas-a.lojas); };
@@ -755,15 +1031,19 @@ function relSaude(){ const nova=versaoMaisNova(); const agora=Date.now();
     if(atr.length){ const md=Math.max(...atr.map(m=>-diasAte(m.vencimento))); sc-= md>30?40:md>15?30:15; mot.push(atr.length+' mensalidade(s) em atraso ('+md+'d)'); }
     if(sit.bloq){ sc-=30; mot.push('licença bloqueada'); } else if(sit.dias!=null&&sit.dias<=10){ sc-=10; mot.push(sit.dias<0?'licença em carência':'licença vence em '+sit.dias+'d'); }
     if(nova&&s.versao&&s.versao!==nova){ sc-=5; mot.push('versão desatualizada'); }
+    let d14=null; if(S.gerOk){ const us=S.usoPor[e.tenant]||[]; const hj=hojeISO();
+      if(us.length && us[0].dia<=addDias(hj,-13)){ d14=diasAtivos(e.tenant,addDias(hj,-13),hj); if(d14<4){ sc-=15; mot.push('só '+d14+' dia(s) de uso em 14'); } }
+      const ab=S.atend.filter(a=>a.tenant===e.tenant&&a.situacao==='aberto'&&a.data<=addDias(hj,-3)); if(ab.length){ sc-=5; mot.push(ab.length+' atendimento(s) aberto(s) há 3+ dias'); }
+      const n30=S.atend.filter(a=>a.tenant===e.tenant&&a.data>=addDias(hj,-29)).length; if(n30>=6){ sc-=5; mot.push('muitos chamados ('+n30+' em 30 dias)'); } }
     const tv=tendenciaVendas(s); if(tv!=null&&tv<-0.3){ sc-=15; mot.push('vendas projetadas '+Math.round(-tv*100)+'% abaixo do mês anterior'); }
     if(e.status==='teste'&&sit.dias!=null&&sit.dias<=7&&sit.dias>=0) mot.push('teste termina em '+sit.dias+'d — hora de converter');
     sc=Math.max(0,sc); const cls=sc>=75?['saudável','pos']:sc>=50?['atenção','warn']:['risco','neg'];
-    return { loja:e.nome, sit:hx(sit.tag,sitTxt(e)[0]), score:tg(sc+' · '+cls[0],cls[1]), _sc:sc, _cls:cls[0], ab:s.ultima_abertura?(dAb===0?'hoje':'há '+dAb+'d'):'nunca', versao:s.versao||'', usu:s.usuarios, vendas:s.vendas_mes, tv, atraso:vAtr||null, mot:mot.join('; ')||'—', _v:+e.valor_mensal||0 }; }).sort((a,b)=>a._sc-b._sc);
+    return { loja:e.nome, sit:hx(sit.tag,sitTxt(e)[0]), score:tg(sc+' · '+cls[0],cls[1]), _sc:sc, _cls:cls[0], ab:s.ultima_abertura?(dAb===0?'hoje':'há '+dAb+'d'):'nunca', versao:s.versao||'', usu:s.usuarios, vendas:s.vendas_mes, tv, atraso:vAtr||null, mot:mot.join('; ')||'—', d14, _v:+e.valor_mensal||0 }; }).sort((a,b)=>a._sc-b._sc);
   const n=k=>rows.filter(r=>r._cls===k).length;
   return { titulo:'Saúde das lojas e risco de cancelamento', desc:'Nota de 0 a 100 por loja, a partir do uso (última abertura), pagamentos em atraso, situação da licença, versão e tendência de vendas informada pelo próprio sistema. Comece as ligações de cima para baixo.',
     kpis:[['Saudáveis (≥75)',NUM(n('saudável')),'var(--pos)'],['Atenção (50–74)',NUM(n('atenção')),'var(--amber-d)'],['Em risco (<50)',NUM(n('risco')),'var(--neg)'],['MRR em risco',BRL(soma(rows.filter(r=>r._cls==='risco'),r=>r._v)),'var(--neg)'],['Versão mais nova',nova?`<span class="mono">${esc(nova)}</span>`:'—']],
-    blocos:[ { titulo:'Lojas (pior nota primeiro)', cols:[['loja','Loja','b'],['sit','Licença','html'],['score','Nota','tag'],['ab','Última abertura','txt'],['versao','Versão','txt'],['usu','Usuários','int'],['vendas','Vendas no mês','brl'],['tv','Projeção x mês ant.','pct'],['atraso','Em atraso','brl'],['mot','Pontos de atenção','txt']], rows, vazio:'Nenhuma loja ativa.' } ],
-    nota:'Pesos: sem abrir >14d −40, >7d −25, >3d −10, nunca abriu −30; atraso >30d −40, >15d −30, até 15d −15; bloqueada −30; vencendo −10; versão antiga −5; vendas projetadas 30% abaixo −15.' }; }
+    blocos:[ { titulo:'Lojas (pior nota primeiro)', cols:[['loja','Loja','b'],['sit','Licença','html'],['score','Nota','tag'],['ab','Última abertura','txt'],['d14','Dias de uso (14d)','int'],['versao','Versão','txt'],['usu','Usuários','int'],['vendas','Vendas no mês','brl'],['tv','Projeção x mês ant.','pct'],['atraso','Em atraso','brl'],['mot','Pontos de atenção','txt']], rows, vazio:'Nenhuma loja ativa.' } ],
+    nota:'Pesos: sem abrir >14d −40, >7d −25, >3d −10, nunca abriu −30; atraso >30d −40, >15d −30, até 15d −15; bloqueada −30; vencendo −10; versão antiga −5; vendas projetadas 30% abaixo −15; menos de 4 dias de uso em 14 −15; atendimento aberto há 3+ dias −5; 6+ chamados em 30 dias −5.' }; }
 
 function relVenc(){ const hj=hojeISO(), lim=addMeses(hj,1);
   const lic=S.empresas.filter(e=>!e.cancelado_em && e.vence_em && e.vence_em<=lim).sort((a,b)=>a.vence_em.localeCompare(b.vence_em)).map(e=>({ loja:e.nome, sit:hx(situacao(e).tag,sitTxt(e)[0]), vence:e.vence_em, dias:diasAte(e.vence_em), plano:e.plano, valor:+e.valor_mensal||0, contato:[e.contato,e.telefone].filter(Boolean).join(' · ') }));
@@ -787,7 +1067,7 @@ function relOcorr(){ const ini=perIni(), fim=perFim(); const evs=S.eventos.filte
     blocos:[ { titulo:'Por tipo', cols:[['tipo','Evento','b'],['qtd','Quantidade','int'],['lojas','Lojas','int']], rows:tipos, total:{qtd:evs.length}, vazio:'Nenhum evento no período.' },
       { titulo:'Por loja', cols:[['loja','Loja','b'],['total','Eventos','int'],['inv','Lic. inválida','int'],['bloq','Bloqueios','int'],['susp','Suspensões','int'],['ren','Renovações','int'],['pag','Pagamentos','int']], rows:lojas, vazio:'Nenhum evento no período.' },
       { titulo:'Ocorrências que pedem atenção', cols:[['em','Quando','txt'],['loja','Loja','b'],['tipo','Evento','tag'],['det','Detalhe','txt']], rows:prob, vazio:'Nenhuma ocorrência problemática no período.' } ],
-    nota:'A Central carrega os 2.000 eventos mais recentes.' }; }
+    nota:'A Central carrega os 1.000 eventos mais recentes.' }; }
 
 
 /* ===== menu lateral (v1.3) ===== */
@@ -797,6 +1077,7 @@ const ICO = {
   relf:'<path d="M4 20V11M10 20V5M16 20v-8M21 20H3"/>',
   relg:'<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
   acomp:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  sup:'<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="2.5" y="13.5" width="4.5" height="7" rx="1.5"/><rect x="17" y="13.5" width="4.5" height="7" rx="1.5"/>',
   eventos:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
   atualizar:'<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
   seguranca:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
@@ -806,15 +1087,18 @@ const ICO = {
 const svg = (k,cls) => `<svg viewBox="0 0 24 24" class="${cls||''}" aria-hidden="true">${ICO[k]}</svg>`;
 function menuItens(){ return [
   { k:'empresas', l:'Empresas', subs:[['lista','Lista de lojas'],['nova','+ Nova empresa']] },
-  { k:'fin', l:'Financeiro', subs:[['mens','Mensalidades'],['custos','Custos']] },
+  { k:'fin', l:'Financeiro', subs:[['mens','Mensalidades'],['custos','Custos'],['fech','Fechamento do mês']] },
+  { k:'sup', l:'Suporte', subs:[['atend','Atendimentos'],['novo','+ Registrar atendimento']] },
   { k:'relf', l:'Relatórios financeiros', subs:RELS[0][1] },
   { k:'relg', l:'Relatórios gerenciais', subs:RELS[1][1] },
   { k:'acomp', l:'Acompanhamento' },
   { k:'eventos', l:'Eventos' } ]; }
 function grupoAtivo(){ if(S.tela==='rel') return RELS[0][1].some(x=>x[0]===S.rel)?'relf':'relg'; return S.tela; }
-function subAtiva(g){ if(g==='empresas') return 'lista'; if(g==='fin') return S.fin.aba; if(g==='relf'||g==='relg') return S.rel; return null; }
+function subAtiva(g){ if(g==='empresas') return 'lista'; if(g==='sup') return 'atend'; if(g==='fin') return S.fin.aba; if(g==='relf'||g==='relg') return S.rel; return null; }
 function menuBadge(g,sub){ const n=S.finOk?mensAtrasadas().length:0;
   if((g==='fin'&&sub==='mens')||(g==='relf'&&sub==='inad')||(g==='fin'&&!sub)) return n?`<span class="bdg" title="${n} mensalidade(s) em atraso">${n}</span>`:'';
+  if(g==='sup'&&(sub==='atend'||!sub)&&S.gerOk){ const a=S.atend.filter(x=>x.situacao==='aberto').length; return a?`<span class="bdg" title="${a} atendimento(s) em aberto">${a}</span>`:''; }
+  if(g==='fin'&&sub==='fech'&&S.gerOk){ const hj=ymHoje(); const p=[1,2,3].map(n=>ymAdd(hj,-n)).filter(c=>!S.fech.some(f=>f.competencia===c)&&(S.mens.some(m=>m.competencia===c)||S.custos.some(k=>k.competencia===c))).length; return p?`<span class="bdg" style="background:var(--amber-d)" title="${p} mês(es) para fechar">${p}</span>`:''; }
   if(g==='relg'&&(sub==='venc'||!sub)){ const v=S.empresas.filter(e=>{ const s=situacao(e); return !s.enc && e.vence_em && s.dias!=null && s.dias<=10; }).length; return v?`<span class="bdg" style="background:var(--amber-d)" title="${v} licença(s) vencendo ou vencidas">${v}</span>`:''; }
   return ''; }
 function menuLateral(){ const ga=grupoAtivo();
@@ -841,6 +1125,7 @@ function menuGrupo(g){ const it=menuItens().find(x=>x.k===g); if(!it) return;
 function ir(g,sub){
   if(g==='empresas'){ S.tela='empresas'; if(sub==='nova'){ S.menuAberto=false; render(); formEmpresa(); return; } }
   else if(g==='fin'){ S.tela='fin'; if(sub) S.fin.aba=sub; }
+  else if(g==='sup'){ S.tela='sup'; if(sub==='novo'){ S.menuAberto=false; render(); atendModal(null); return; } }
   else if(g==='relf'||g==='relg'){ const lista=(g==='relf'?RELS[0]:RELS[1])[1]; S.tela='rel'; S.rel = sub || (lista.some(x=>x[0]===S.rel)?S.rel:lista[0][0]); }
   else S.tela=g;
   S.menuAberto=false; render(); try{ window.scrollTo(0,0); }catch(e){} }
