@@ -9,12 +9,33 @@
 <style>
 :root{--navy:#0f172a;--navy2:#1e293b;--amber:#f59e0b;--amber-d:#b45309;--amber-soft:#fef3c7;--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f1f5f9;--card:#fff;--pos:#16a34a;--neg:#dc2626;--info:#2563eb}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
-header{background:var(--navy);color:#fff;padding:12px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-header .logo{width:36px;height:36px;border-radius:9px;background:var(--amber);display:grid;place-items:center;font-weight:900;color:#0f172a}
-header h1{font-size:17px;margin:0}header small{display:block;color:#94a3b8;font-size:11.5px}
-nav{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}nav button{background:transparent;border:1px solid #334155;color:#e2e8f0;padding:7px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px}nav button.on{background:var(--amber);color:#0f172a;border-color:var(--amber)}
+.logo{width:36px;height:36px;border-radius:9px;background:var(--amber);display:grid;place-items:center;font-weight:900;color:#0f172a;flex:none}
+/* menu lateral (v1.3) */
+.shell{display:flex;min-height:100vh}
+.side{width:250px;flex:none;background:var(--navy);color:#cbd5e1;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;padding:14px 10px;transition:width .15s}
+.side .marca{display:flex;gap:10px;align-items:center;padding:2px 6px 14px;border-bottom:1px solid #1e293b;margin-bottom:8px;min-width:0}
+.side .marca h1{font-size:15px;margin:0;color:#fff;white-space:nowrap}.side .marca small{color:#94a3b8;font-size:11px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px}
+.mi,.si{display:flex;align-items:center;width:100%;background:none;border:0;cursor:pointer;font-family:inherit;text-align:left;border-radius:8px}
+.mi{gap:10px;color:#cbd5e1;padding:9px 10px;font-size:13.5px;font-weight:600;margin:1px 0}
+.mi svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.mi:hover{background:#1e293b;color:#fff}.mi.on{background:#1e293b;color:#fff}.mi.on>svg:first-child{color:var(--amber)}
+.mi .seta{margin-left:auto;width:14px;height:14px;transition:transform .15s;opacity:.7}.mi.exp .seta{transform:rotate(90deg)}
+.mi .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subs{margin:0 0 6px 19px;border-left:1px solid #334155;padding-left:8px}
+.si{color:#94a3b8;padding:6px 10px;font-size:13px;font-weight:500;margin:1px 0}.si:hover{color:#fff;background:#1e293b}.si.on{color:#0f172a;background:var(--amber);font-weight:700}
+.bdg{margin-left:auto;background:var(--neg);color:#fff;border-radius:999px;font-size:10.5px;padding:1px 7px;font-weight:700;line-height:16px}
+.si.on .bdg{background:#0f172a}
+.side .rodape{margin-top:auto;border-top:1px solid #1e293b;padding-top:8px}
+.conteudo{flex:1;min-width:0}
+.topo{display:flex;align-items:center;gap:10px;padding:14px 22px 0;max-width:1280px;margin:0 auto}
+.crumb{font-size:13px;color:var(--mut)}.crumb b{color:var(--ink)}
+.hamb{display:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1}
+.veu{display:none}
+
+.shell.menu-mini .side{width:62px}.shell.menu-mini .side .txt,.shell.menu-mini .subs,.shell.menu-mini .seta,.shell.menu-mini .marca>div,.shell.menu-mini .mi .bdg{display:none}.shell.menu-mini .mi{justify-content:center;padding:10px 0}.shell.menu-mini .marca{justify-content:center;padding-left:0;padding-right:0}
+@media(max-width:900px){.side{position:fixed;left:0;top:0;z-index:60;transform:translateX(-105%);transition:transform .2s}.side.aberto{transform:none;box-shadow:0 10px 40px rgba(0,0,0,.35)}.veu.aberto{display:block;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:55}.hamb{display:inline-block}.shell.menu-mini .side{width:250px}.shell.menu-mini .side .txt,.shell.menu-mini .subs,.shell.menu-mini .seta,.shell.menu-mini .marca>div{display:revert}.btn-recolher{display:none!important}main{padding:14px 14px}.topo{padding:12px 14px 0}}
 main{padding:18px 22px;max-width:1280px;margin:0 auto}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:16px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.kpi small{color:var(--mut);font-size:11px;display:block}.kpi b{font-size:clamp(16px,1.35vw,20px);white-space:nowrap}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:16px}.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}.kpi small{color:var(--mut);font-size:11px;display:block}.kpi b{font-size:clamp(16px,1.35vw,20px);white-space:nowrap}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px}
 table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:8px 8px;border-bottom:2px solid var(--line)}td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}tr:hover td{background:#f8fafc}
 .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}.tag.pos{background:#dcfce7;color:#166534}.tag.neg{background:#fee2e2;color:#991b1b}.tag.warn{background:var(--amber-soft);color:#92400e}.tag.info{background:#dbeafe;color:#1e40af}.tag.mut{background:#e2e8f0;color:#475569}
@@ -43,7 +64,8 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 .hbar{display:grid;grid-template-columns:minmax(90px,160px) 1fr auto;gap:8px;align-items:center;font-size:12.5px;margin:5px 0}.hbar .trk{background:#f1f5f9;border-radius:4px;height:12px}.hbar .trk span{display:block;height:12px;border-radius:0 4px 4px 0;background:var(--s1)}
 .aviso{background:var(--amber-soft);border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;font-size:13px}
 .printhead{display:none}
-@media print{header,nav,.noprint,#toast{display:none!important}main{padding:0;max-width:none}.card{break-inside:avoid;border-color:#cbd5e1}.printhead{display:block;margin-bottom:10px}body{background:#fff}tr:hover td{background:none}}
+@media print{.side,.veu,.topo,.noprint,#toast{display:none!important}main{padding:0;max-width:none}.card{break-inside:avoid;border-color:#cbd5e1}.printhead{display:block;margin-bottom:10px}body{background:#fff}tr:hover td{background:none}}
+@media(min-width:1600px){.kpis{grid-template-columns:repeat(8,minmax(0,1fr))}}@media(max-width:640px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -53,7 +75,7 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 <script>
 /* ===== Conexão do projeto Supabase DA CENTRAL (cole aqui depois de criar o projeto) ===== */
 const CENTRAL_CFG = { url: '', key: '' };   // ex.: url:'https://xxxx.supabase.co', key:'sb_publishable_...'
-const VERSAO = '1.2.1';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
+const VERSAO = '1.3';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
 const CENTRAL_URL_ATUAL = () => (cfg().url || '').replace(/\/+$/,'');
 
 const $ = id => document.getElementById(id);
@@ -90,7 +112,7 @@ function copiar(txt){ try{ navigator.clipboard.writeText(txt); toast('Copiado');
 
 /* ===== estado ===== */
 const S = { tela:'empresas', empresas:[], sinais:{}, eventos:[], q:'', user:null,
-  mens:[], custos:[], finOk:true, finErr:'', fin:{ comp:null, aba:'mens' }, rel:'dre', per:{ ini:null, fim:null }, prevN:6 };
+  mens:[], custos:[], finOk:true, finErr:'', fin:{ comp:null, aba:'mens' }, rel:'dre', per:{ ini:null, fim:null }, prevN:6, exp:{}, menuAberto:false, mini:(()=>{ try{ return localStorage.getItem('central_menu_mini')==='1'; }catch(e){ return false; } })() };
 
 /* ===== telas de entrada ===== */
 function telaConfig(){ $('app').innerHTML=`<div class="gate"><div class="box"><h2 style="margin:0 0 4px">Central GestãoPro</h2><p class="mut small">Conexão com o projeto Supabase <b>da Central</b> (Settings → API Keys).</p>
@@ -132,12 +154,12 @@ function render(){ if(!S.user) return telaLogin();
   const mrr=mrrAtual();   // só lojas pagantes (fora teste, não bloqueadas)
   const semSinal=vivas.filter(e=>{ const s=S.sinais[e.tenant]; return !s || !s.ultima_abertura || (Date.now()-new Date(s.ultima_abertura))>7*86400000; }).length;
   const atraso=S.finOk? soma(mensAtrasadas(),m=>m.valor) : null;
-  $('app').innerHTML=`<header><div class="logo">GP</div><div><h1>Central GestãoPro</h1><small>${esc(S.user.email||'')} · v${VERSAO}</small></div>
-    <nav>${[['empresas','Empresas'],['fin','Financeiro'],['rel','Relatórios'],['acomp','Acompanhamento'],['eventos','Eventos']].map(([k,l])=>`<button class="${S.tela===k?'on':''}" onclick="S.tela='${k}';render()">${l}</button>`).join('')}<button onclick="carregar().then(render)" title="Atualizar">↻</button><button onclick="sair()">Sair</button></nav></header>
+  $('app').innerHTML=`<div class="shell ${S.mini?'menu-mini':''}">${menuLateral()}<div class="veu ${S.menuAberto?'aberto':''}" onclick="S.menuAberto=false;render()"></div><div class="conteudo">
+   <div class="topo"><button class="hamb" onclick="S.menuAberto=true;render()" aria-label="Abrir menu">☰</button><div class="crumb">${migalha()}</div></div>
    <main>
     <div class="kpis noprint"><div class="kpi"><small>Lojas</small><b>${vivas.length}</b></div><div class="kpi"><small>Ativas</small><b style="color:var(--pos)">${ativas}</b></div><div class="kpi"><small>Em teste</small><b style="color:var(--info)">${teste}</b></div><div class="kpi"><small>Vencendo (10 dias)</small><b style="color:var(--amber-d)">${venc}</b></div><div class="kpi"><small>Suspensas / vencidas</small><b style="color:var(--neg)">${bloq}</b></div><div class="kpi"><small>Receita mensal (MRR)</small><b>${BRL(mrr)}</b></div><div class="kpi"><small>Sem sinal há 7 dias</small><b style="color:${semSinal?'var(--neg)':'inherit'}">${semSinal}</b></div>${atraso!=null?`<div class="kpi" style="cursor:pointer" onclick="S.tela='rel';S.rel='inad';render()" title="Ver inadimplência"><small>Mensalidades em atraso</small><b style="color:${atraso?'var(--neg)':'inherit'}">${BRL(atraso)}</b></div>`:''}</div>
     <div id="tela">${({empresas:telaEmpresas, fin:telaFinanceiro, rel:telaRelatorios, acomp:telaAcomp, eventos:telaEventos})[S.tela]()}</div>
-   </main>`; }
+   </main></div></div>`; }
 function telaEmpresas(){ const q=S.q.toLowerCase(); const lista=S.empresas.filter(e=>!q||(e.nome+' '+e.tenant+' '+(e.cidade||'')+' '+(e.contato||'')).toLowerCase().includes(q));
   return `<div class="toolbar"><input placeholder="Buscar loja, cidade, contato…" value="${esc(S.q)}" oninput="S.q=this.value;$('tela').innerHTML=telaEmpresas()"><button class="btn amber" onclick="formEmpresa()">+ Nova empresa</button></div>
   <div class="card" style="padding:0;overflow:auto"><table><thead><tr><th>Empresa</th><th>Tenant</th><th>Plano · valor</th><th>Situação</th><th>Vencimento</th><th>Última abertura</th><th>Versão</th><th></th></tr></thead><tbody>
@@ -303,7 +325,7 @@ async function registrarPagamento(tenant, comp, pag){ const e=S.empresas.find(x=
 
 function telaFinanceiro(){ if(!S.finOk) return avisoSql();
   if(!S.fin.comp) S.fin.comp=ymHoje(); const c=S.fin.comp;
-  const nav=`<div class="toolbar noprint"><div class="subnav" style="margin:0">${[['mens','Mensalidades'],['custos','Custos']].map(([k,l])=>`<button class="${S.fin.aba===k?'on':''}" onclick="S.fin.aba='${k}';render()">${l}</button>`).join('')}</div>
+  const nav=`<div class="toolbar noprint"><h3 style="margin:0;font-size:16px">${S.fin.aba==='custos'?'Custos da operação':'Mensalidades'}</h3>
     <div class="per" style="margin-left:auto"><button class="btn sm" onclick="S.fin.comp=ymAdd(S.fin.comp,-1);render()">‹</button><input type="month" value="${c}" onchange="if(this.value){S.fin.comp=this.value;render()}"><button class="btn sm" onclick="S.fin.comp=ymAdd(S.fin.comp,1);render()">›</button>${c!==ymHoje()?`<button class="btn sm" onclick="S.fin.comp=ymHoje();render()">Mês atual</button>`:''}</div></div>`;
   return nav + (S.fin.aba==='custos' ? finCustos(c) : finMens(c)); }
 
@@ -477,7 +499,7 @@ function periodoPreset(p){ const h=ymHoje(); const ano=h.slice(0,4);
   if(m){ S.per.ini=m[0]; S.per.fim=m[1]; render(); } }
 function periodoSet(k,v){ if(!/^\d{4}-\d{2}$/.test(v)) return; S.per[k]=v; if(S.per.ini>S.per.fim){ if(k==='ini') S.per.fim=v; else S.per.ini=v; } render(); }
 function telaRelatorios(){ if(!S.per.ini){ S.per.fim=ymHoje(); S.per.ini=ymAdd(S.per.fim,-5); }
-  const nav=`<div class="subnav noprint">${RELS.map(([g,itens])=>`<span class="grp">${g}</span>`+itens.map(([k,l])=>`<button class="${S.rel===k?'on':''}" onclick="S.rel='${k}';render()">${l}</button>`).join('')).join('')}</div>`;
+  const nav='';
   const temPer=REL_PERIODO[S.rel];
   const ctl=`<div class="toolbar noprint">${temPer?`<div class="per"><span class="small mut">De</span><input type="month" value="${S.per.ini}" onchange="periodoSet('ini',this.value)"><span class="small mut">até</span><input type="month" value="${S.per.fim}" onchange="periodoSet('fim',this.value)">
       <select onchange="periodoPreset(this.value);this.value=''"><option value="">Atalhos…</option><option value="mes">Este mês</option><option value="ant">Mês passado</option><option value="m3">Últimos 3 meses</option><option value="m6">Últimos 6 meses</option><option value="m12">Últimos 12 meses</option><option value="ano">Este ano</option><option value="anoant">Ano passado</option></select></div>`
@@ -659,6 +681,62 @@ function relOcorr(){ const ini=perIni(), fim=perFim(); const evs=S.eventos.filte
       { titulo:'Ocorrências que pedem atenção', cols:[['em','Quando','txt'],['loja','Loja','b'],['tipo','Evento','tag'],['det','Detalhe','txt']], rows:prob, vazio:'Nenhuma ocorrência problemática no período.' } ],
     nota:'A Central carrega os 2.000 eventos mais recentes.' }; }
 
+
+/* ===== menu lateral (v1.3) ===== */
+const ICO = {
+  empresas:'<path d="M3 9l1.5-5h15L21 9M4 9v11h16V9M3 9h18M9 20v-6h6v6"/>',
+  fin:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/>',
+  relf:'<path d="M4 20V11M10 20V5M16 20v-8M21 20H3"/>',
+  relg:'<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
+  acomp:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  eventos:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  atualizar:'<path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/>',
+  sair:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  recolher:'<path d="M15 18l-6-6 6-6"/>', expandir:'<path d="M9 18l6-6-6-6"/>', seta:'<path d="M9 18l6-6-6-6"/>'
+};
+const svg = (k,cls) => `<svg viewBox="0 0 24 24" class="${cls||''}" aria-hidden="true">${ICO[k]}</svg>`;
+function menuItens(){ return [
+  { k:'empresas', l:'Empresas', subs:[['lista','Lista de lojas'],['nova','+ Nova empresa']] },
+  { k:'fin', l:'Financeiro', subs:[['mens','Mensalidades'],['custos','Custos']] },
+  { k:'relf', l:'Relatórios financeiros', subs:RELS[0][1] },
+  { k:'relg', l:'Relatórios gerenciais', subs:RELS[1][1] },
+  { k:'acomp', l:'Acompanhamento' },
+  { k:'eventos', l:'Eventos' } ]; }
+function grupoAtivo(){ if(S.tela==='rel') return RELS[0][1].some(x=>x[0]===S.rel)?'relf':'relg'; return S.tela; }
+function subAtiva(g){ if(g==='empresas') return 'lista'; if(g==='fin') return S.fin.aba; if(g==='relf'||g==='relg') return S.rel; return null; }
+function menuBadge(g,sub){ const n=S.finOk?mensAtrasadas().length:0;
+  if((g==='fin'&&sub==='mens')||(g==='relf'&&sub==='inad')||(g==='fin'&&!sub)) return n?`<span class="bdg" title="${n} mensalidade(s) em atraso">${n}</span>`:'';
+  if(g==='relg'&&(sub==='venc'||!sub)){ const v=S.empresas.filter(e=>{ const s=situacao(e); return !s.enc && e.vence_em && s.dias!=null && s.dias<=10; }).length; return v?`<span class="bdg" style="background:var(--amber-d)" title="${v} licença(s) vencendo ou vencidas">${v}</span>`:''; }
+  return ''; }
+function menuLateral(){ const ga=grupoAtivo();
+  const itens=menuItens().map(it=>{ const ativo=ga===it.k; const exp=it.subs ? (S.exp[it.k]!=null ? S.exp[it.k] : ativo) : false;
+    const bt=`<button class="mi ${ativo?'on':''} ${exp?'exp':''}" title="${esc(it.l)}" onclick="menuGrupo('${it.k}')">${svg(it.k)}<span class="txt">${esc(it.l)}</span>${it.subs&&!exp?menuBadge(it.k,null):''}${it.subs?svg('seta','seta'):''}</button>`;
+    const subs=it.subs&&exp?`<div class="subs">${it.subs.map(([k,l])=>`<button class="si ${ativo&&subAtiva(it.k)===k&&k!=='nova'?'on':''}" onclick="ir('${it.k}','${k}')">${esc(l)}${menuBadge(it.k,k)}</button>`).join('')}</div>`:'';
+    return bt+subs; }).join('');
+  return `<aside class="side ${S.menuAberto?'aberto':''}">
+    <div class="marca"><div class="logo">GP</div><div><h1>Central GestãoPro</h1><small title="${esc(S.user.email||'')}">${esc(S.user.email||'')} · v${VERSAO}</small></div></div>
+    <nav aria-label="Menu principal">${itens}</nav>
+    <div class="rodape">
+      <button class="mi" title="Atualizar dados" onclick="carregar().then(render)">${svg('atualizar')}<span class="txt">Atualizar dados</span></button>
+      <button class="mi btn-recolher" title="${S.mini?'Expandir menu':'Recolher menu'}" onclick="menuMini()">${svg(S.mini?'expandir':'recolher')}<span class="txt">Recolher menu</span></button>
+      <button class="mi" title="Sair" onclick="sair()">${svg('sair')}<span class="txt">Sair</span></button>
+    </div></aside>`; }
+function menuGrupo(g){ const it=menuItens().find(x=>x.k===g); if(!it) return;
+  if(!it.subs) return ir(g);
+  const ativo=grupoAtivo()===g;
+  if(S.mini) return ir(g, ativo?subAtiva(g):null);
+  const exp=S.exp[g]!=null?S.exp[g]:ativo;
+  if(!ativo){ S.exp[g]=true; return ir(g); }
+  S.exp[g]=!exp; render(); }
+function ir(g,sub){
+  if(g==='empresas'){ S.tela='empresas'; if(sub==='nova'){ S.menuAberto=false; render(); formEmpresa(); return; } }
+  else if(g==='fin'){ S.tela='fin'; if(sub) S.fin.aba=sub; }
+  else if(g==='relf'||g==='relg'){ const lista=(g==='relf'?RELS[0]:RELS[1])[1]; S.tela='rel'; S.rel = sub || (lista.some(x=>x[0]===S.rel)?S.rel:lista[0][0]); }
+  else S.tela=g;
+  S.menuAberto=false; render(); try{ window.scrollTo(0,0); }catch(e){} }
+function menuMini(){ S.mini=!S.mini; try{ localStorage.setItem('central_menu_mini',S.mini?'1':'0'); }catch(e){} render(); }
+function migalha(){ const g=grupoAtivo(); const it=menuItens().find(x=>x.k===g)||{l:''}; const s=subAtiva(g);
+  const sn=it.subs&&s?(it.subs.find(x=>x[0]===s)||[])[1]:null; return sn?`${esc(it.l)} › <b>${esc(sn)}</b>`:`<b>${esc(it.l)}</b>`; }
 /* ===== início ===== */
 async function iniciar(){ const c=cfg(); if(!(c.url&&c.key)) return telaConfig(); if(!window.supabase){ $('app').innerHTML='<div class="gate"><div class="box">A biblioteca do Supabase não carregou (sem internet?).</div></div>'; return; }
   const client=sb(); try{ const { data }=await client.auth.getSession(); S.user=data&&data.session&&data.session.user||null; }catch(e){ S.user=null; }
