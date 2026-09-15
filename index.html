@@ -100,7 +100,7 @@ tr.tot td{font-weight:700;background:#f8fafc;border-top:2px solid var(--line)}
 // Conexão FIXA com o projeto Supabase da Central (Settings → API Keys). Só a URL e a chave PUBLICÁVEL —
 // nunca a service_role/secret. Com isto preenchido, nenhum computador pede a conexão: vai direto para o login.
 const CENTRAL_CFG = { url: 'https://hpwvrutngzpiimaypijs.supabase.co', key: 'sb_publishable_01v-fzmCQZcobWFgx0zQwA_caQjRi1W' };   // ex.: url:'https://xxxx.supabase.co', key:'sb_publishable_...'
-const VERSAO = '1.6';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
+const VERSAO = '1.7';  // repositório próprio: TROPICAL\\CENTRAL GESTAO (nunca dentro do repositório do sistema da loja)
 const CENTRAL_URL_ATUAL = () => (cfg().url || '').replace(/\/+$/,'');
 
 const $ = id => document.getElementById(id);
@@ -263,7 +263,8 @@ async function trocarSenha(){ const a=$('s-nova').value, b=$('s-rep').value;
 /* ===== dados ===== */
 async function carregar(){ const c=sb(); if(!c) return;
   const [e,s,v,m,k]=await Promise.all([ c.from('empresas').select('*').order('criado_em'), c.from('sinais').select('*'), c.from('eventos').select('*').order('em',{ascending:false}).limit(1000),
-    buscarTudo(()=>c.from('mensalidades').select('*').order('vencimento').order('id')), buscarTudo(()=>c.from('custos').select('*').order('data').order('id')), carregarGerencial(c) ]);
+    buscarTudo(()=>c.from('mensalidades').select('*').order('vencimento').order('id')), buscarTudo(()=>c.from('custos').select('*').order('data').order('id')), carregarGerencial(c),
+    c.from('mensalidades').select('tipo').limit(1).then(r=>{ S.implOk=!r.error; }, ()=>{ S.implOk=false; }) ]);
   if(e.error){ toast(e.error.message.indexOf('does not exist')>=0?'Rode o central.sql no projeto da Central':e.error.message,'err'); }
   S.empresas=e.data||[]; S.sinais={}; (s.data||[]).forEach(x=>S.sinais[x.tenant]=x); S.eventos=v.data||[];
   S.finOk=!(m.error||k.error); S.finErr=((m.error||k.error)||{}).message||''; S.mens=m.data||[]; S.custos=k.data||[]; }
@@ -314,13 +315,15 @@ function formEmpresa(tenant){ const e=tenant?S.empresas.find(x=>x.tenant===tenan
    <div class="row"><div><label>E-mail</label><input id="f-email" value="${esc(e?e.email:'')}"></div><div><label>Plano</label><select id="f-plano" ${e?`onchange="mudancaContratoVer(${+e.valor_mensal||0},'${esc(e.plano)}')"`:''}>${['teste','padrao','completo'].map(p=>`<option ${e&&e.plano===p?'selected':(!e&&p==='teste'?'selected':'')}>${p}</option>`).join('')}</select></div></div>
    <div class="row"><div><label>Valor mensal (R$)</label><input id="f-valor" type="number" step="0.01" value="${e?(+e.valor_mensal||0):0}" ${e?`oninput="mudancaContratoVer(${+e.valor_mensal||0},'${esc(e.plano)}')"`:''}></div><div><label>Vencimento da licença</label><input id="f-vence" type="date" value="${esc(e?(e.vence_em||''):d.toISOString().slice(0,10))}"></div></div>
    ${mudancaContratoCampos(e)}
+   ${S.finOk?blocoImplantacao(e):''}
    <div class="row"><div><label>Dia de vencimento da mensalidade</label><input id="f-dia" type="number" min="1" max="31" value="${e&&e.dia_cobranca?e.dia_cobranca:10}"></div><div><label>Cliente pagante desde <span class="mut" style="font-weight:400">(usado nos relatórios)</span></label><input id="f-ativada" type="date" value="${esc(e?(e.ativada_em||''):'')}"></div></div>
    ${e&&e.cancelado_em?`<div class="aviso" style="margin-top:8px">Contrato <b>encerrado em ${fD(e.cancelado_em)}</b>${e.motivo_cancelamento?' — '+esc(e.motivo_cancelamento):''}.</div>`:''}
    <div class="row"><div><label>Projeto Supabase da loja (URL)</label><input id="f-proj" value="${esc(e?e.projeto_url:'')}" placeholder="https://xxxx.supabase.co"></div><div><label>Endereço do sistema da loja</label><input id="f-app" value="${esc(e?e.app_url:'')}" placeholder="https://loja.vercel.app"></div></div>
    <label>Chave de licença</label><div style="display:flex;gap:6px"><input id="f-chave" class="mono" value="${esc(e?e.chave:gerarChave())}" readonly><button class="btn" onclick="if(confirm('Gerar uma NOVA chave? A loja para de abrir até você atualizar o segredo LICENCA_CHAVE no projeto dela.')){$('f-chave').value=gerarChave();}">Gerar nova</button><button class="btn" onclick="copiar($('f-chave').value)">Copiar</button></div>
    <label>Observações</label><textarea id="f-obs" rows="2">${esc(e?e.obs:'')}</textarea>
    ${e?blocoHistorico(e):''}
-   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">${novo?'':(e.cancelado_em?`<button class="btn pos" style="margin-right:auto" onclick="desfazerEncerramento('${esc(e.tenant)}')">Desfazer encerramento</button>`:`<button class="btn neg" style="margin-right:auto" onclick="encerrarContrato('${esc(e.tenant)}')">Encerrar contrato</button>`)}<button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="salvarEmpresa(${novo?'null':"'"+esc(e.tenant)+"'"})">${novo?'Criar loja':'Salvar'}</button></div>`); }
+   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap">${novo?'':(e.cancelado_em?`<button class="btn pos" style="margin-right:auto" onclick="desfazerEncerramento('${esc(e.tenant)}')">Desfazer encerramento</button>`:`<button class="btn neg" style="margin-right:auto" onclick="encerrarContrato('${esc(e.tenant)}')">Encerrar contrato</button>`)}<button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="salvarEmpresa(${novo?'null':"'"+esc(e.tenant)+"'"})">${novo?'Criar loja':'Salvar'}</button></div>`);
+  try{ implResumo(); }catch(x){} }
 async function salvarEmpresa(tenantAtual){ const g=id=>($(id)?$(id).value:'').trim(); const nome=g('f-nome'), tenant=(tenantAtual||g('f-tenant'));
   if(!nome){ toast('Informe o nome','err'); return; } if(!/^[a-z0-9][a-z0-9-]{2,29}$/.test(tenant)){ toast('Identificador: 3 a 30 caracteres, letras minúsculas, números e hífen','err'); return; }
   const row={ tenant, nome, cnpj:g('f-cnpj')||null, cidade:g('f-cidade')||null, contato:g('f-contato')||null, telefone:g('f-tel')||null, email:g('f-email')||null, plano:g('f-plano')||'padrao', valor_mensal:+g('f-valor')||0, vence_em:g('f-vence')||null, projeto_url:g('f-proj')||null, app_url:g('f-app')||null, chave:g('f-chave'), obs:g('f-obs')||null, atualizado_em:new Date().toISOString() };
@@ -328,11 +331,14 @@ async function salvarEmpresa(tenantAtual){ const g=id=>($(id)?$(id).value:'').tr
   row.ativada_em=g('f-ativada')||null;
   if(!tenantAtual){ row.status = row.plano==='teste'?'teste':'ativa'; if(row.status==='ativa' && !row.ativada_em) row.ativada_em=hojeISO(); }
   if(!S.finOk){ delete row.dia_cobranca; delete row.ativada_em; }   // central.sql antigo: não manda colunas novas
+  const im=S.finOk?implLerForm():null;
+  if(im){ row.custo_implantacao=im.custo; row.implantacao_em=(im.taxa>0||im.custo>0)?im.data:null; if(!im.trava){ row.taxa_implantacao=im.taxa; row.taxa_parcelas=im.parc; } }
   const ant=tenantAtual?S.empresas.find(x=>x.tenant===tenantAtual):null;
   const mudou=ant && (Math.abs((+ant.valor_mensal||0)-row.valor_mensal)>0.004 || ant.plano!==row.plano);
   const mud=mudou&&$('f-mud-data')?{ data:$('f-mud-data').value||hojeISO(), tipo:$('f-mud-tipo').value, obs:$('f-mud-obs').value.trim() }:null;
   const c=sb(); const r=tenantAtual? await c.from('empresas').update(row).eq('tenant',tenant) : await c.from('empresas').insert(row);
   if(r.error){ toast(/duplicate|23505/i.test(r.error.message||r.error.code||'')?'Já existe uma loja com esse identificador':r.error.message,'err'); return; }
+  if(im) await implSincronizar(tenant, im, ant);
   if(mud) await histRegistrar({ tenant, vigente_desde:mud.data, plano:row.plano, valor_mensal:row.valor_mensal, tipo:mud.tipo, obs:mud.obs||('antes: '+(ant.plano||'')+' · '+BRL(ant.valor_mensal)) });
   if(!tenantAtual) await histRegistrar({ tenant, vigente_desde:row.ativada_em||hojeISO(), plano:row.plano, valor_mensal:row.valor_mensal, tipo:'inicio', obs:row.plano==='teste'?'início do teste':null });
   try{ await c.from('eventos').insert({ tenant, tipo:tenantAtual?'empresa_editada':'empresa_criada', detalhe:nome }); }catch(e){}
@@ -347,7 +353,7 @@ async function mudarStatus(tenant, status){ const e=S.empresas.find(x=>x.tenant=
   toast(status==='suspensa'?'Loja suspensa':'Loja reativada'); await carregar(); render(); }
 function renovar(tenant){ const e=S.empresas.find(x=>x.tenant===tenant); if(!e) return;
   const base=e.vence_em && diasAte(e.vence_em)>0 ? e.vence_em : hojeISO(); const nova=addMeses(base,1);
-  const comp=ymHoje(); const jaPaga=S.mens.find(m=>m.tenant===tenant&&m.competencia===comp&&m.situacao==='paga');
+  const comp=ymHoje(); const jaPaga=S.mens.find(m=>m.tenant===tenant&&m.competencia===comp&&ehMens(m)&&m.situacao==='paga');
   abrirModal(`<h3>Renovar — ${esc(e.nome)}</h3>
    <p class="mut small" style="margin:0 0 6px">Vencimento atual: <b>${e.vence_em?fD(e.vence_em):'sem vencimento'}</b> · ${situacao(e).tag}</p>
    <div class="row"><div><label>Novo vencimento da licença</label><input id="r-vence" type="date" value="${nova}"></div><div><label>&nbsp;</label><label style="display:flex;gap:6px;align-items:center;margin:10px 0 0;font-weight:500"><input type="checkbox" id="r-semvenc" style="width:auto" onchange="$('r-vence').disabled=this.checked"> sem vencimento</label></div></div>
@@ -442,7 +448,7 @@ LICENCA_CHAVE       = ${e.chave}`;
    ===================================================================== */
 const FORMAS = [['pix','Pix'],['boleto','Boleto'],['transferencia','Transferência'],['cartao','Cartão'],['dinheiro','Dinheiro'],['outro','Outro']];
 const formaNome = f => (FORMAS.find(x=>x[0]===f)||[,f||'—'])[1];
-const CATS = [['infraestrutura','Infraestrutura (Supabase, Vercel)'],['fiscal','Fiscal (Focus NFe)'],['dominio','Domínio / e-mail'],['whatsapp','WhatsApp / mensagens'],['marketing','Marketing / vendas'],['suporte','Suporte / pessoal'],['impostos','Impostos sobre receita'],['taxas','Taxas bancárias / gateway'],['outros','Outros']];
+const CATS = [['implantacao','Implantação (custo)'],['infraestrutura','Infraestrutura (Supabase, Vercel)'],['fiscal','Fiscal (Focus NFe)'],['dominio','Domínio / e-mail'],['whatsapp','WhatsApp / mensagens'],['marketing','Marketing / vendas'],['suporte','Suporte / pessoal'],['impostos','Impostos sobre receita'],['taxas','Taxas bancárias / gateway'],['outros','Outros']];
 const catNome = c => (CATS.find(x=>x[0]===c)||[,c||'outros'])[1];
 function selForma(id, v){ return `<select id="${id}">${FORMAS.map(([k,l])=>`<option value="${k}" ${k===v?'selected':''}>${l}</option>`).join('')}</select>`; }
 function selLoja(id, v, geral){ return `<select id="${id}">${geral?`<option value="">${geral}</option>`:''}${S.empresas.map(e=>`<option value="${esc(e.tenant)}" ${e.tenant===v?'selected':''}>${esc(e.nome)}${e.cancelado_em?' (encerrada)':''}</option>`).join('')}</select>`; }
@@ -455,14 +461,14 @@ function mensAtrasadas(){ return S.mens.filter(m=>mSit(m)==='atrasada'); }
 function avisoSql(){ return `<div class="aviso"><b>Falta atualizar o banco da Central.</b> Abra o Supabase do projeto da Central › SQL Editor, cole o <span class="mono">central.sql</span> novo (v1.2) e clique em Run. Nada que já existe é apagado.<div class="mut small" style="margin-top:6px">${esc(S.finErr)}</div></div>`; }
 
 /* pagar (cria a mensalidade se ainda não existir) */
-async function registrarPagamento(tenant, comp, pag){ const e=S.empresas.find(x=>x.tenant===tenant)||{}; const c=sb();
-  const ex=S.mens.find(m=>m.tenant===tenant && m.competencia===comp);
+async function registrarPagamento(tenant, comp, pag, id){ const e=S.empresas.find(x=>x.tenant===tenant)||{}; const c=sb();
+  const ex= id ? S.mens.find(m=>m.id===id) : S.mens.find(m=>m.tenant===tenant && m.competencia===comp && ehMens(m));
   const dados={ situacao:'paga', pago_em:pag.pago_em, valor_pago:pag.valor_pago, forma:pag.forma||null };
   if(pag.obs!==undefined) dados.obs=pag.obs||null;
   const r= ex ? await c.from('mensalidades').update(dados).eq('id',ex.id)
               : await c.from('mensalidades').insert({ tenant, competencia:comp, valor:pag.valor_pago, vencimento:vencDe(comp,e.dia_cobranca), ...dados });
   if(r.error){ toast(r.error.message,'err'); return false; }
-  try{ await c.from('eventos').insert({ tenant, tipo:'pagamento', detalhe:ymNome(comp)+' · '+BRL(pag.valor_pago)+' · '+formaNome(pag.forma) }); }catch(x){}
+  try{ await c.from('eventos').insert({ tenant, tipo:'pagamento', detalhe:(ex&&ehImpl(ex)?'implantação · ':'')+ymNome(comp)+' · '+BRL(pag.valor_pago)+' · '+formaNome(pag.forma) }); }catch(x){}
   return true; }
 
 function telaFinanceiro(){ if(!S.finOk) return avisoSql();
@@ -476,7 +482,7 @@ function finMens(c){ const doMes=S.mens.filter(m=>m.competencia===c).sort((a,b)=
   const validas=doMes.filter(m=>m.situacao!=='cancelada');
   const prev=soma(validas,m=>m.valor), rec=soma(validas.filter(m=>m.situacao==='paga'),m=>m.valor_pago), ab=soma(validas.filter(m=>mSit(m)==='aberta'),m=>m.valor), at=soma(validas.filter(m=>mSit(m)==='atrasada'),m=>m.valor);
   const antigas=mensAtrasadas().filter(m=>m.competencia<c);
-  const linha=m=>`<tr><td><b>${esc(nomeDe(m.tenant))}</b>${m.obs?`<div class="mut small">${esc(m.obs)}</div>`:''}</td><td>${ymNome(m.competencia)}</td><td class="n">${BRL(m.valor)}</td><td>${fD(m.vencimento)}</td><td>${mTag(m)}</td><td>${m.pago_em?fD(m.pago_em):'—'}</td><td class="n">${m.valor_pago!=null?BRL(m.valor_pago):'—'}</td><td>${m.forma?formaNome(m.forma):'—'}</td>
+  const linha=m=>`<tr><td><b>${esc(nomeDe(m.tenant))}</b>${ehImpl(m)?' <span class="tag info">implantação</span>':''}${m.obs?`<div class="mut small">${esc(m.obs)}</div>`:''}</td><td>${ymNome(m.competencia)}</td><td class="n">${BRL(m.valor)}</td><td>${fD(m.vencimento)}</td><td>${mTag(m)}</td><td>${m.pago_em?fD(m.pago_em):'—'}</td><td class="n">${m.valor_pago!=null?BRL(m.valor_pago):'—'}</td><td>${m.forma?formaNome(m.forma):'—'}</td>
     <td style="white-space:nowrap" class="noprint">${m.situacao==='paga'?`<button class="btn sm" onclick="estornar(${m.id})">Estornar</button>`:m.situacao==='aberta'?`<button class="btn sm pos" onclick="receberModal(${m.id})">Receber</button>`:''} <button class="btn sm" onclick="mensModal(${m.id})">Editar</button></td></tr>`;
   const cab=`<thead><tr><th>Loja</th><th>Compet.</th><th class="n">Valor</th><th>Vencimento</th><th>Situação</th><th>Pago em</th><th class="n">Valor pago</th><th>Forma</th><th class="noprint"></th></tr></thead>`;
   return `<div class="mini"><div><small>Previsto em ${ymNome(c)}</small><b>${BRL(prev)}</b></div><div><small>Recebido</small><b style="color:var(--pos)">${BRL(rec)}</b></div><div><small>A vencer</small><b style="color:var(--info)">${BRL(ab)}</b></div><div><small>Em atraso</small><b style="color:${at?'var(--neg)':'inherit'}">${BRL(at)}</b></div><div><small>Recebido / previsto</small><b>${prev?PCT(rec/prev):'—'}</b></div></div>
@@ -484,7 +490,7 @@ function finMens(c){ const doMes=S.mens.filter(m=>m.competencia===c).sort((a,b)=
    <div class="card" style="padding:0;overflow:auto"><table>${cab}<tbody>${doMes.map(linha).join('')||`<tr><td colspan="9" class="mut" style="text-align:center;padding:24px">Nenhuma mensalidade em ${ymNome(c)}. Use <b>Gerar mensalidades</b>.</td></tr>`}</tbody></table></div>
    ${antigas.length?`<div class="card" style="padding:0;overflow:auto"><h4 style="padding:12px 14px 0;color:var(--neg)">Em atraso de meses anteriores · ${BRL(soma(antigas,m=>m.valor))}</h4><table>${cab}<tbody>${antigas.map(linha).join('')}</tbody></table></div>`:''}`; }
 
-function gerarModal(c){ const ja=new Set(S.mens.filter(m=>m.competencia===c).map(m=>m.tenant));
+function gerarModal(c){ const ja=new Set(S.mens.filter(m=>m.competencia===c && ehMens(m)).map(m=>m.tenant));
   const cand=S.empresas.filter(e=>!e.cancelado_em && e.status!=='teste' && +e.valor_mensal>0 && !ja.has(e.tenant) && (!e.ativada_em || e.ativada_em<=ymFimISO(c)));
   abrirModal(`<h3>Gerar mensalidades de ${ymNome(c)}</h3>
    ${cand.length?`<p class="mut small" style="margin:0 0 8px">Lojas pagantes que ainda não têm cobrança neste mês. Suspensas vêm desmarcadas.</p>
@@ -494,13 +500,14 @@ function gerarModal(c){ const ja=new Set(S.mens.filter(m=>m.competencia===c).map
    :`<p>Nada a gerar: todas as lojas pagantes já têm a cobrança de ${ymNome(c)} (lojas em teste, encerradas ou com valor zero ficam de fora).</p><div style="text-align:right"><button class="btn" onclick="fecharModal()">Fechar</button></div>`}`); }
 async function gerarSalvar(c){ const sel=[...document.querySelectorAll('.g-sel:checked')].map(x=>x.value); if(!sel.length){ toast('Marque ao menos uma loja','err'); return; }
   const rows=sel.map(t=>{ const e=S.empresas.find(x=>x.tenant===t); return { tenant:t, competencia:c, valor:+e.valor_mensal||0, vencimento:vencDe(c,e.dia_cobranca) }; });
-  const r=await sb().from('mensalidades').upsert(rows,{ onConflict:'tenant,competencia', ignoreDuplicates:true }); if(r.error){ toast(r.error.message,'err'); return; }
+  if(S.implOk) rows.forEach(x=>x.tipo='mensalidade');
+  const r=await sb().from('mensalidades').upsert(rows,{ onConflict:S.implOk?'tenant,competencia,tipo':'tenant,competencia', ignoreDuplicates:true }); if(r.error){ toast(r.error.message,'err'); return; }
   fecharModal(); toast(rows.length+' mensalidade(s) gerada(s)'); await carregar(); render(); }
 
 function receberModal(id){ const m=S.mens.find(x=>x.id===id); if(!m) return; const e=S.empresas.find(x=>x.tenant===m.tenant)||{};
   const base=(e.vence_em && e.vence_em>m.vencimento)? e.vence_em : m.vencimento; const sug=addMeses(base,1);
-  const marcar=!!e.vence_em && e.vence_em<sug && !e.cancelado_em;
-  abrirModal(`<h3>Receber — ${esc(e.nome||m.tenant)} · ${ymNome(m.competencia)}</h3>
+  const marcar=ehMens(m) && !!e.vence_em && e.vence_em<sug && !e.cancelado_em;
+  abrirModal(`<h3>Receber — ${esc(e.nome||m.tenant)} · ${ehImpl(m)?'implantação · ':''}${ymNome(m.competencia)}</h3>
    <p class="mut small" style="margin:0">Valor da cobrança ${BRL(m.valor)} · vencimento ${fD(m.vencimento)} ${mTag(m)}</p>
    <div class="row"><div><label>Data do pagamento</label><input id="p-data" type="date" value="${hojeISO()}"></div><div><label>Valor pago (R$)</label><input id="p-valor" type="number" step="0.01" value="${+m.valor||0}"></div></div>
    <div class="row"><div><label>Forma</label>${selForma('p-forma','pix')}</div><div><label>Observação</label><input id="p-obs" value="${esc(m.obs||'')}" placeholder="ex.: desconto combinado"></div></div>
@@ -509,7 +516,7 @@ function receberModal(id){ const m=S.mens.find(x=>x.id===id); if(!m) return; con
    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn amber" onclick="receberSalvar(${id})">Confirmar recebimento</button></div>`); }
 async function receberSalvar(id){ const m=S.mens.find(x=>x.id===id); if(!m) return; const e=S.empresas.find(x=>x.tenant===m.tenant)||{};
   const data=$('p-data').value, valor=+$('p-valor').value; if(!data||!(valor>=0)){ toast('Informe data e valor','err'); return; }
-  const ok=await registrarPagamento(m.tenant, m.competencia, { pago_em:data, valor_pago:valor, forma:$('p-forma').value, obs:$('p-obs').value.trim() }); if(!ok) return;
+  const ok=await registrarPagamento(m.tenant, m.competencia, { pago_em:data, valor_pago:valor, forma:$('p-forma').value, obs:$('p-obs').value.trim() }, m.id); if(!ok) return;
   if($('p-est').checked){ const v=$('p-vence').value; if(v){ const upd={ vence_em:v, atualizado_em:new Date().toISOString() };
       if(!e.cancelado_em && (e.status==='suspensa'||e.status==='teste')) upd.status='ativa'; if(!e.ativada_em) upd.ativada_em=data;
       const r=await sb().from('empresas').update(upd).eq('tenant',m.tenant); if(r.error) toast(r.error.message,'err');
@@ -522,7 +529,7 @@ async function estornar(id){ const m=S.mens.find(x=>x.id===id); if(!m||!confirm(
 
 function mensModal(id){ const m=id?S.mens.find(x=>x.id===id):null; const c=S.fin.comp||ymHoje();
   abrirModal(`<h3>${m?'Cobrança — '+esc(nomeDe(m.tenant))+' · '+ymNome(m.competencia):'Cobrança avulsa'}</h3>
-   ${m?'':`<label>Loja</label>${selLoja('m-tenant','',null)}`}
+   ${m?'':`<div class="row"><div><label>Loja</label>${selLoja('m-tenant','',null)}</div><div><label>Tipo</label>${S.implOk?`<select id="m-tipo"><option value="mensalidade">Mensalidade</option><option value="implantacao">Taxa de implantação</option></select>`:'<select id="m-tipo" disabled><option value="mensalidade">Mensalidade</option></select>'}</div></div>`}
    <div class="row"><div><label>Competência</label><input id="m-comp" type="month" value="${m?m.competencia:c}" ${m?'disabled':''}></div><div><label>Valor (R$)</label><input id="m-valor" type="number" step="0.01" value="${m?(+m.valor||0):''}"></div></div>
    <div class="row"><div><label>Vencimento</label><input id="m-venc" type="date" value="${m?m.vencimento:vencDe(c,10)}"></div><div><label>Situação</label><select id="m-sit">${['aberta','paga','cancelada'].map(s=>`<option ${m&&m.situacao===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
    <label>Observação</label><input id="m-obs" value="${esc(m?m.obs:'')}">
@@ -535,8 +542,8 @@ async function mensSalvar(id){ const m=id?S.mens.find(x=>x.id===id):null; const 
   if(sit!=='paga'){ row.pago_em=null; row.valor_pago=null; row.forma=null; }
   else if(!m || m.situacao!=='paga'){ row.pago_em=hojeISO(); row.valor_pago=row.valor; row.forma='outro'; }
   let r; if(m) r=await sb().from('mensalidades').update(row).eq('id',id);
-  else { const comp=$('m-comp').value; if(!/^\d{4}-\d{2}$/.test(comp)){ toast('Informe a competência','err'); return; } r=await sb().from('mensalidades').insert({ ...row, tenant:$('m-tenant').value, competencia:comp }); }
-  if(r.error){ toast(/duplicate|23505/i.test(r.error.message+(r.error.code||''))?'Essa loja já tem cobrança nesse mês — edite a existente':r.error.message,'err'); return; }
+  else { const comp=$('m-comp').value; if(!/^\d{4}-\d{2}$/.test(comp)){ toast('Informe a competência','err'); return; } const ins={ ...row, tenant:$('m-tenant').value, competencia:comp }; if(S.implOk) ins.tipo=$('m-tipo').value; r=await sb().from('mensalidades').insert(ins); }
+  if(r.error){ toast(/duplicate|23505/i.test(r.error.message+(r.error.code||''))?'Essa loja já tem cobrança desse tipo nesse mês — edite a existente':r.error.message,'err'); return; }
   fecharModal(); toast('Salvo'); await carregar(); render(); }
 async function mensExcluir(id){ if(!confirm('Excluir esta cobrança? (Para não cobrar, prefira marcar como cancelada — fica no histórico.)')) return;
   const r=await sb().from('mensalidades').delete().eq('id',id); if(r.error){ toast(r.error.message,'err'); return; } fecharModal(); toast('Excluída'); await carregar(); render(); }
@@ -762,7 +769,7 @@ function dadosDoMes(c){ const ini=c+'-01', fim=ymFimISO(c), ant=ymAdd(c,-1);
   const at=ativosEm(c), antA=ativosEm(ant);
   const novos=S.empresas.filter(e=>(ativadaDe(e)||'').slice(0,7)===c), canc=S.empresas.filter(e=>(e.cancelado_em||'').slice(0,7)===c);
   const fm=fatDe(c), ks=custosDe(c), L=atendPeriodo(ini,fim), vh=valorHora();
-  const faturado=soma(fm,m=>m.valor), recebido=soma(pagosEntre(ini,fim),m=>m.valor_pago);
+  const faturado=soma(fm,m=>m.valor), recebido=soma(pagosEntre(ini,fim),m=>m.valor_pago), fat_impl=soma(fm.filter(ehImpl),m=>m.valor);
   const impostos=soma(ks.filter(k=>k.categoria==='impostos'),k=>k.valor), custos=soma(ks,k=>k.valor);
   const aberto=soma(S.mens.filter(m=>m.situacao==='aberta' && m.vencimento<=fim),m=>m.valor);
   const minT=soma(L,a=>a.minutos);
@@ -771,7 +778,7 @@ function dadosDoMes(c){ const ini=c+'-01', fim=ymFimISO(c), ant=ymAdd(c,-1);
       em_aberto:soma(f.filter(m=>m.situacao==='aberta'),m=>m.valor), custos_diretos:soma(ks.filter(k=>k.tenant===e.tenant),k=>k.valor),
       horas_suporte:Math.round(soma(L.filter(a=>a.tenant===e.tenant),a=>a.minutos)/6)/10, dias_uso:diasAtivos(e.tenant,ini,fim) }; });
   return { competencia:c, mrr:soma(at,e=>valorEm(e,c)), clientes:at.length, novos:novos.length, cancelados:canc.length, churn:antA.length?canc.length/antA.length:null,
-    faturado, recebido, impostos, custos, resultado:faturado-custos, margem:faturado?(faturado-custos)/faturado:null, a_receber_ate_fim:aberto,
+    faturado, fat_implantacao:fat_impl, recebido, impostos, custos, custo_implantacao:soma(ks.filter(k=>k.categoria==='implantacao'),k=>k.valor), resultado:faturado-custos, margem:faturado?(faturado-custos)/faturado:null, a_receber_ate_fim:aberto,
     atendimentos:L.length, horas_suporte:Math.round(minT/6)/10, custo_suporte:vh?minT/60*vh:null, valor_hora:vh||null,
     dias_uso_medio:lojas.length?soma(lojas,l=>l.dias_uso)/lojas.length:null, lojas }; }
 function telaFechamento(){ if(!S.gerOk) return avisoSqlGer();
@@ -811,13 +818,90 @@ function fechVer(c){ const f=S.fech.find(x=>x.competencia===c); if(!f) return; c
   abrirModal(`<h3>Fechamento de ${ymNome(c)}</h3><p class="mut small" style="margin:0 0 8px">Fechado em ${fDH(f.fechado_em)}${f.fechado_por?' por '+esc(f.fechado_por):''}. Coluna "hoje" = recalculado agora; diferenças em laranja.</p>
    <div style="overflow-x:auto"><table><thead><tr><th></th><th class="n">Fechado</th><th class="n">Hoje</th><th class="n">Diferença</th></tr></thead><tbody>
    ${lin('Receita mensal (MRR)','mrr',br)}${lin('Clientes ativos','clientes',n)}${lin('Novos','novos',n)}${lin('Cancelados','cancelados',n)}${lin('Churn','churn',pc)}
-   ${lin('Faturado','faturado',br)}${lin('Recebido','recebido',br)}${lin('Impostos','impostos',br)}${lin('Custos (com impostos)','custos',br)}${lin('Resultado','resultado',br)}${lin('Margem','margem',pc)}
+   ${lin('Faturado','faturado',br)}${lin('  · taxa de implantação','fat_implantacao',br)}${lin('Recebido','recebido',br)}${lin('Impostos','impostos',br)}${lin('Custos (com impostos)','custos',br)}${lin('  · custo de implantação','custo_implantacao',br)}${lin('Resultado','resultado',br)}${lin('Margem','margem',pc)}
    ${lin('A receber até o fim do mês','a_receber_ate_fim',br)}${lin('Atendimentos','atendimentos',n)}${lin('Horas de suporte','horas_suporte',hr)}${lin('Custo de suporte','custo_suporte',br)}</tbody></table></div>
    <h4 style="margin:14px 0 6px">Lojas no fechamento</h4>
    <div style="overflow-x:auto"><table><thead><tr><th>Loja</th><th>Situação</th><th class="n">Mensal</th><th class="n">Faturado</th><th class="n">Recebido</th><th class="n">Em aberto</th><th class="n">Suporte</th><th class="n">Dias de uso</th></tr></thead><tbody>
    ${(d.lojas||[]).map(l=>`<tr><td><b>${esc(l.nome)}</b></td><td>${esc(l.situacao||'')}</td><td class="n">${BRL(l.valor)}</td><td class="n">${BRL(l.faturado)}</td><td class="n">${BRL(l.recebido)}</td><td class="n">${BRL(l.em_aberto)}</td><td class="n">${hr(l.horas_suporte)}</td><td class="n">${n(l.dias_uso)}</td></tr>`).join('')||'<tr><td colspan="8" class="mut">—</td></tr>'}
    </tbody></table></div>
    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><button class="btn" onclick="window.print()">Imprimir</button><button class="btn" onclick="fecharModal()">Fechar</button></div>`); }
+
+/* =====================================================================
+   IMPLANTAÇÃO (v1.7) — taxa cobrada do cliente (parcelável) e custo de implantação
+   ===================================================================== */
+const tipoMens = m => (m && m.tipo) || 'mensalidade';
+const ehMens = m => tipoMens(m)==='mensalidade';
+const ehImpl = m => tipoMens(m)==='implantacao';
+const parcelasImpl = t => S.mens.filter(m=>m.tenant===t && ehImpl(m)).sort((a,b)=>a.competencia.localeCompare(b.competencia));
+const custoImplDe = t => S.custos.filter(k=>k.tenant===t && k.categoria==='implantacao');
+function dividirParcelas(total, n){ const c=Math.round(total*100), base=Math.floor(c/n); return Array.from({length:n},(_,i)=>(base+(i===n-1?c-base*n:0))/100); }
+
+function blocoImplantacao(e){ const novo=!e;
+  if(!S.implOk) return `<div class="aviso" style="margin-top:10px">Os campos de <b>implantação</b> aparecem depois de rodar o <span class="mono">central.sql</span> v1.7 no Supabase da Central.</div>`;
+  const ps=e?parcelasImpl(e.tenant):[]; const pagas=ps.filter(m=>m.situacao==='paga');
+  const taxa=e?(+e.taxa_implantacao||0):0, parc=e?(+e.taxa_parcelas||1):1, custo=e?(+e.custo_implantacao||0):0;
+  const dataImpl=(e&&e.implantacao_em)||hojeISO();
+  const trava = pagas.length>0;
+  return `<div class="card" style="margin:14px 0 0;background:#f8fafc"><h4 style="margin:0 0 2px">Implantação</h4>
+   <p class="mut small" style="margin:0 0 4px">Taxa = o que o cliente paga pela implantação (vira cobrança em Mensalidades). Custo = o que você gastou para implantar (vira custo da loja).</p>
+   <div class="row"><div><label>Data da implantação</label><input id="f-impl-data" type="date" value="${esc(dataImpl)}" oninput="implResumo()"></div><div><label>Custo da implantação (R$) <span class="mut" style="font-weight:400">— seu gasto</span></label><input id="f-impl-custo" type="number" step="0.01" min="0" value="${custo||''}" placeholder="0,00" oninput="implResumo()"></div></div>
+   <div class="row"><div><label>Taxa de implantação cobrada (R$)</label><input id="f-impl-taxa" type="number" step="0.01" min="0" value="${taxa||''}" placeholder="0,00" ${trava?'disabled':''} oninput="implResumo()"></div>
+     <div style="display:grid;grid-template-columns:96px 1fr;gap:8px"><div><label>Parcelas</label><select id="f-impl-parc" ${trava?'disabled':''} onchange="implResumo()">${Array.from({length:12},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===parc?'selected':''}>${n}x</option>`).join('')}</select></div>
+       <div><label>1º vencimento</label><input id="f-impl-venc" type="date" value="${esc((ps[0]&&ps[0].vencimento)||dataImpl)}" ${trava?'disabled':''} oninput="implResumo()"></div></div></div>
+   <div id="f-impl-res" class="small" style="margin-top:8px"></div>
+   ${ps.length?`<div style="overflow-x:auto;margin-top:6px"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th class="n">Valor</th><th>Situação</th></tr></thead><tbody>${ps.map((m,i)=>`<tr><td>${i+1}/${ps.length}</td><td>${fD(m.vencimento)}</td><td class="n">${BRL(m.valor)}</td><td>${mTag(m)}</td></tr>`).join('')}</tbody></table></div>`:''}
+   ${trava?`<p class="mut small" style="margin:6px 0 0">A taxa já tem parcela paga — para mudar, ajuste as parcelas em Financeiro › Mensalidades (tipo implantação).</p>`:''}
+   ${novo?'':`<input type="hidden" id="f-impl-orig" value="${taxa}|${parc}|${esc((ps[0]&&ps[0].vencimento)||'')}|${ps.length}">`}</div>`; }
+function implResumo(){ const box=$('f-impl-res'); if(!box) return; const taxa=+($('f-impl-taxa').value||0), custo=+($('f-impl-custo').value||0), n=+($('f-impl-parc').value||1);
+  const mensal=+($('f-valor')?$('f-valor').value:0)||0; const luc=taxa-custo; const partes=[];
+  if(taxa>0) partes.push(`Taxa: <b>${BRL(taxa)}</b>${n>1?` em ${n}x de ${BRL(dividirParcelas(taxa,n)[0])}`:''}`);
+  if(taxa>0||custo>0) partes.push(`Resultado da implantação: <b style="color:${luc<0?'var(--neg)':'var(--pos)'}">${BRL(luc)}</b>`);
+  if(luc<0 && mensal>0) partes.push(`o cliente paga o custo que sobrou em <b>${Math.ceil(-luc/mensal)} mês(es)</b> de mensalidade`);
+  else if(luc>=0 && (taxa>0||custo>0)) partes.push('a implantação já se paga com a taxa');
+  box.innerHTML=partes.join(' · '); }
+function implLerForm(){ if(!S.implOk || !$('f-impl-custo')) return null;
+  return { data:$('f-impl-data').value||hojeISO(), custo:Math.max(0,+$('f-impl-custo').value||0), taxa:Math.max(0,+$('f-impl-taxa').value||0),
+    parc:Math.min(12,Math.max(1,parseInt($('f-impl-parc').value,10)||1)), venc:$('f-impl-venc').value||$('f-impl-data').value||hojeISO(), trava:$('f-impl-taxa').disabled }; }
+async function implSincronizar(tenant, im, e){ if(!im) return; const c=sb(); const erros=[];
+  // custo → lançamento de custo da loja (categoria implantacao)
+  const ks=custoImplDe(tenant).filter(k=>k.descricao==='Implantação do sistema');   // só o lançamento automático; outros custos de implantação lançados à mão ficam
+  if(im.custo>0){ const row={ data:im.data, competencia:im.data.slice(0,7), categoria:'implantacao', descricao:'Implantação do sistema', valor:im.custo, tenant, recorrente:false };
+    const r= ks.length ? await c.from('custos').update(row).eq('id',ks[0].id) : await c.from('custos').insert(row); if(r.error) erros.push(r.error.message);
+    for(const k of ks.slice(1)) await c.from('custos').delete().eq('id',k.id); }
+  else if(ks.length){ for(const k of ks) await c.from('custos').delete().eq('id',k.id); }
+  // taxa → parcelas em mensalidades (tipo implantacao)
+  if(!im.trava){ const ps=parcelasImpl(tenant); const orig=(e?[+e.taxa_implantacao||0,+e.taxa_parcelas||1,(ps[0]&&ps[0].vencimento)||'',ps.length]:[0,1,'',0]).join('|');
+    const agora=[im.taxa,im.parc,im.taxa>0?im.venc:'',im.taxa>0?im.parc:0].join('|');
+    if(orig!==agora){ const abertas=ps.filter(m=>m.situacao!=='paga'); if(abertas.length){ const r=await c.from('mensalidades').delete().in('id',abertas.map(m=>m.id)); if(r.error) erros.push(r.error.message); }
+      if(im.taxa>0){ const vals=dividirParcelas(im.taxa,im.parc); const usados=new Set();
+        const rows=vals.map((v,i)=>{ let venc=addMeses(im.venc,i), comp=venc.slice(0,7); while(usados.has(comp)){ venc=addMeses(venc,1); comp=venc.slice(0,7); } usados.add(comp);
+          return { tenant, competencia:comp, tipo:'implantacao', valor:v, vencimento:venc, obs:'Implantação '+(i+1)+'/'+im.parc }; });
+        const r=await c.from('mensalidades').insert(rows); if(r.error) erros.push(r.error.message); } } }
+  if(erros.length) toast('Implantação: '+erros[0],'err'); }
+
+function relImpl(){ const ini=perIni(), fim=perFim();
+  const lojas=S.empresas.filter(e=>(+e.taxa_implantacao||0)>0 || (+e.custo_implantacao||0)>0 || parcelasImpl(e.tenant).length || custoImplDe(e.tenant).length);
+  const rows=lojas.map(e=>{ const ps=parcelasImpl(e.tenant).filter(m=>m.situacao!=='cancelada'); const ks=custoImplDe(e.tenant);
+    const taxa=ps.length?soma(ps,m=>m.valor):(+e.taxa_implantacao||0), receb=soma(ps.filter(m=>m.situacao==='paga'),m=>m.valor_pago);
+    const custo=ks.length?soma(ks,k=>k.valor):(+e.custo_implantacao||0); const luc=taxa-custo;
+    const mensal=S.gerOk?valorEm(e,ymHoje()):(+e.valor_mensal||0);
+    const payback = luc>=0 ? 0 : (mensal>0 ? Math.ceil(-luc/mensal) : null);
+    const pagas=S.mens.filter(m=>m.tenant===e.tenant && ehMens(m) && m.situacao==='paga'); const recMens=soma(pagas,m=>m.valor_pago);
+    const falta=Math.max(0,-luc-recMens);
+    const data=e.implantacao_em||(ks[0]&&ks[0].data)||(ps[0]&&ps[0].vencimento)||ativadaDe(e);
+    return { loja:e.nome, data, sit:tg(...sitTxt(e)), taxa, parc:ps.length||null, receb, aberto:taxa-receb, custo, luc, mensal, payback, recMens,
+      rec:hx(luc>=0?'<span class="tag pos">paga na implantação</span>':(falta<=0?'<span class="tag pos">recuperado</span>':`<span class="tag warn">faltam ${BRL(falta)}</span>`), luc>=0?'paga na implantação':(falta<=0?'recuperado':'faltam '+falta.toFixed(2).replace('.',','))), _d:data||'' }; })
+    .sort((a,b)=>String(b._d).localeCompare(String(a._d)));
+  const noPer=rows.filter(r=>r.data && r.data>=ini && r.data<=fim);
+  const pagasPer=S.mens.filter(m=>ehImpl(m) && m.situacao==='paga' && m.pago_em>=ini && m.pago_em<=fim);
+  const custoPer=soma(S.custos.filter(k=>k.categoria==='implantacao' && k.data>=ini && k.data<=fim),k=>k.valor);
+  const taxaPer=soma(S.mens.filter(m=>ehImpl(m) && m.situacao!=='cancelada' && m.competencia>=S.per.ini && m.competencia<=S.per.fim),m=>m.valor);
+  const pb=rows.filter(r=>r.payback!=null);
+  return { titulo:'Implantações', desc:'Taxa de implantação cobrada de cada cliente (e quanto já entrou), o custo que você teve para implantar e em quantos meses de mensalidade o cliente paga esse custo. Os campos ficam em Empresas › Editar › Implantação.',
+    kpis:[['Implantações no período',NUM(noPer.length)],['Taxas faturadas no período',BRL(taxaPer)],['Taxas recebidas no período',BRL(soma(pagasPer,m=>m.valor_pago)),'var(--pos)'],['Custo de implantação no período',BRL(custoPer)],['Resultado das implantações (período)',BRL(taxaPer-custoPer),taxaPer-custoPer<0?'var(--neg)':'var(--pos)'],['Retorno médio',pb.length?(soma(pb,r=>r.payback)/pb.length).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mês(es)':'—']],
+    blocos:[ { titulo:'Todas as implantações', cols:[['loja','Loja','b'],['data','Implantação','date'],['sit','Situação','tag'],['taxa','Taxa cobrada','brl'],['parc','Parcelas','int'],['receb','Taxa recebida','brl'],['aberto','Taxa a receber','brl'],['custo','Custo','brl'],['luc','Resultado','brl'],['mensal','Mensal','brl'],['payback','Retorno (meses)','int'],['recMens','Mensalidades recebidas','brl'],['rec','Custo recuperado?','html']],
+      rows, total:{ taxa:soma(rows,r=>r.taxa), receb:soma(rows,r=>r.receb), aberto:soma(rows,r=>r.aberto), custo:soma(rows,r=>r.custo), luc:soma(rows,r=>r.luc) }, vazio:'Nenhuma implantação registrada. Preencha em Empresas › Editar › Implantação.' } ],
+    nota:'Retorno = quantos meses de mensalidade cobrem o custo que a taxa não cobriu (0 = a taxa já pagou a implantação). A taxa entra como receita no Resultado mensal (coluna "Implantação") e o custo entra como custo direto da loja.' }; }
 
 /* =====================================================================
    RELATÓRIO ANALÍTICO (v1.6) — mensal ou por período, com resumo automático
@@ -851,7 +935,7 @@ function analiticoGerar(){ const t=$('an-tipo').value; let ini, fim;
 function comPer(ini,fim,fn){ const s={ ini:S.per.ini, fim:S.per.fim }; S.per.ini=ini; S.per.fim=fim; try{ return fn(); } finally { S.per.ini=s.ini; S.per.fim=s.fim; } }
 function dadosAnalise(ini,fim){ const meses=ymLista(ini,fim), antes=ymAdd(ini,-1);
   const d={ ini, fim, meses:meses.length };
-  if(S.finOk){ const t=comPer(ini,fim,relDRE).blocos[1].total; Object.assign(d,{ fat:t.fat, rec:t.rec, imp:t.imp, dir:t.dir, ger:t.ger, ct:t.ct, res:t.res, marg:t.marg, caixa:t.caixa });
+  if(S.finOk){ const t=comPer(ini,fim,relDRE).blocos[1].total; Object.assign(d,{ fimp:t.fimp, fat:t.fat, rec:t.rec, imp:t.imp, dir:t.dir, ger:t.ger, ct:t.ct, res:t.res, marg:t.marg, caixa:t.caixa });
     const pg=pagosEntre(ini+'-01',ymFimISO(fim)); d.pagos=pg.length; d.emDia=pg.length?pg.filter(m=>m.pago_em<=m.vencimento).length/pg.length:null;
     d.lojas=comPer(ini,fim,relLojas).blocos[1].rows.filter(r=>r.plano!==undefined);
     d.cats=comPer(ini,fim,relCustos).blocos[1].rows; }
@@ -886,6 +970,9 @@ function insightsAnalise(a,p,rotAnt){ const I=[]; const add=(nivel,texto,acao)=>
     const lj=(a.lojas||[]).filter(r=>r.fat>0); const tot=soma(lj,r=>r.fat);
     if(lj.length>1){ const top=lj.slice().sort((x,y)=>y.fat-x.fat)[0]; const part=top.fat/tot; if(part>0.5) add('atencao',`<b>${esc(top.loja)}</b> concentra ${PCT(part)} da receita — dependência alta de um cliente.`,'Buscar novos clientes para diluir o risco.'); }
     lj.filter(r=>r.res2!=null && r.res2<0).forEach(r=>add('atencao',`<b>${esc(r.loja)}</b> dá prejuízo depois do suporte (${BRL(r.res2)}; ${HMIN(r.horas*60)} de atendimento).`,'Revisar o plano/valor de '+esc(r.loja)+' ou treinar a equipe para reduzir chamados.'));
+    if(S.implOk){ const im=comPer(a.ini,a.fim,relImpl); const no=im.blocos[0].rows.filter(r=>r.data&&r.data>=a.ini+'-01'&&r.data<=ymFimISO(a.fim));
+      if(no.length){ const luc=soma(no,r=>r.luc); add(luc<0?'atencao':'bom',`${no.length} implantação(ões) no período: taxa ${BRL(soma(no,r=>r.taxa))}, custo ${BRL(soma(no,r=>r.custo))}, resultado <b>${BRL(luc)}</b>${no.some(r=>r.payback>0)?'; retorno em '+no.filter(r=>r.payback>0).map(r=>esc(r.loja)+' '+r.payback+' mês(es)').join(', '):''}.`, luc<0?'Rever a taxa de implantação — o custo não está sendo coberto.':null); }
+      const ab=S.mens.filter(m=>ehImpl(m)&&mSit(m)==='atrasada'); if(ab.length) add('alerta',`${ab.length} parcela(s) de implantação atrasada(s): ${BRL(soma(ab,m=>m.valor))}.`,'Cobrar as parcelas de implantação em atraso.'); }
     if(a.cats&&a.cats.length){ const c0=a.cats[0]; const vc=varPct(a.ct,p.ct); add(vc!=null&&vc>0.15?'atencao':'info',`Custos de <b>${BRL(a.ct)}</b> ${vc!=null?'('+setaVar(vc,false)+')':''}; maior peso: <b>${esc(c0.cat)}</b> (${PCT(c0.pct)}).`, vc!=null&&vc>0.15?'Custos subiram mais de 15%: conferir os lançamentos de '+esc(c0.cat)+'.':null); }
   }
   const vm=varPct(a.mrrFim,a.mrrIni);
@@ -918,7 +1005,7 @@ function telaAnalitico(){ const A=S.ana; if(!A){ return `<div class="card">Nenhu
   const fechado = n===1 && S.gerOk && S.fech.some(f=>f.competencia===A.ini);
   // indicadores
   const K=[]; const k=(l,va,vp,fmt,bomSobe,pp)=>K.push({ l, va, vp, fmt, bomSobe, pp });
-  if(S.finOk){ k('Receita faturada',a.fat,p.fat,BRL,true); k('Recebido (caixa)',a.rec,p.rec,BRL,true); k('Custos + impostos',a.ct,p.ct,BRL,false); k('Resultado',a.res,p.res,BRL,true); k('Margem',a.marg,p.marg,PCT,true,true); k('Pagamentos em dia',a.emDia,p.emDia,PCT,true,true); }
+  if(S.finOk){ k('Receita faturada',a.fat,p.fat,BRL,true); if(a.fimp||p.fimp) k('  · taxa de implantação',a.fimp,p.fimp,BRL,true); k('Recebido (caixa)',a.rec,p.rec,BRL,true); k('Custos + impostos',a.ct,p.ct,BRL,false); k('Resultado',a.res,p.res,BRL,true); k('Margem',a.marg,p.marg,PCT,true,true); k('Pagamentos em dia',a.emDia,p.emDia,PCT,true,true); }
   k('MRR no fim do período',a.mrrFim,p.mrrFim,BRL,true); k('Clientes ativos no fim',a.ativos,p.ativos,NUM,true); k('Clientes novos',a.novos,p.novos,NUM,true); k('Cancelamentos',a.canc,p.canc,NUM,false);
   k('Expansão (reajustes/upgrades)',a.exp,p.exp,BRL,true); k('Contração (descontos/downgrades)',a.contr,p.contr,BRL,false); k('Retenção de receita (NRR)',a.nrr,p.nrr,PCT,true,true);
   if(S.gerOk){ k('Atendimentos',a.atend,p.atend,NUM,false); k('Horas de suporte',a.minSup/60,p.minSup/60,v=>(+v||0).toLocaleString('pt-BR',{maximumFractionDigits:1})+'h',false); if(valorHora()) k('Custo do suporte',a.custoSup,p.custoSup,BRL,false); k('Uso médio das lojas',a.usoMedio,p.usoMedio,PCT,true,true); }
@@ -952,12 +1039,12 @@ function telaAnalitico(){ const A=S.ana; if(!A){ return `<div class="card">Nenhu
    RELATÓRIOS (v1.2) — financeiros e gerenciais
    ===================================================================== */
 const RELS = [
-  ['Financeiros', [['dre','Resultado mensal'],['receb','Recebimentos'],['inad','Inadimplência'],['lojas','Rentabilidade por loja'],['custos','Custos'],['prev','Previsão de receita']]],
+  ['Financeiros', [['dre','Resultado mensal'],['receb','Recebimentos'],['inad','Inadimplência'],['lojas','Rentabilidade por loja'],['custos','Custos'],['impl','Implantações'],['prev','Previsão de receita']]],
   ['Gerenciais',  [['saas','Indicadores SaaS'],['contratos','Mudanças de contrato'],['carteira','Carteira de clientes'],['uso','Uso das lojas'],['saude','Saúde e risco'],['suporte','Suporte'],['venc','Vencimentos'],['ocorr','Ocorrências de licença']]]
 ];
-const REL_PERIODO = { dre:1, receb:1, lojas:1, custos:1, saas:1, ocorr:1, uso:1, suporte:1, contratos:1 };
+const REL_PERIODO = { impl:1, dre:1, receb:1, lojas:1, custos:1, saas:1, ocorr:1, uso:1, suporte:1, contratos:1 };
 const REL_PRECISA_GER = { uso:1, suporte:1, contratos:1 };
-const REL_PRECISA_FIN = { dre:1, receb:1, inad:1, lojas:1, custos:1 };
+const REL_PRECISA_FIN = { impl:1, dre:1, receb:1, inad:1, lojas:1, custos:1 };
 const TIPO_NOME = { empresa_criada:'Loja criada', empresa_editada:'Cadastro editado', suspensa:'Suspensa', reativada:'Reativada', renovada:'Renovada', pagamento:'Pagamento', pagamento_estornado:'Pagamento estornado', contrato_encerrado:'Contrato encerrado', licenca_invalida:'Licença inválida', licenca_bloqueada:'Bloqueio aplicado', mes_fechado:'Mês fechado', mes_reaberto:'Mês reaberto' };
 
 /* ---- bases ---- */
@@ -1030,7 +1117,7 @@ function telaRelatorios(){ if(!S.per.ini){ S.per.fim=ymHoje(); S.per.ini=ymAdd(S
       <div style="margin-left:auto;display:flex;gap:6px"><button class="btn" onclick="window.print()">Imprimir / PDF</button><button class="btn" onclick="exportarCSV()">Exportar planilha (CSV)</button></div></div>`;
   if(REL_PRECISA_FIN[S.rel] && !S.finOk){ S._rel=null; return nav+avisoSql(); }
   if(REL_PRECISA_GER[S.rel] && !S.gerOk){ S._rel=null; return nav+avisoSqlGer(); }
-  const fn={ dre:relDRE, receb:relReceb, inad:relInad, lojas:relLojas, custos:relCustos, prev:relPrev, saas:relSaaS, carteira:relCarteira, saude:relSaude, venc:relVenc, ocorr:relOcorr, uso:relUso, suporte:relSuporte, contratos:relContratos }[S.rel] || relDRE;
+  const fn={ dre:relDRE, receb:relReceb, inad:relInad, lojas:relLojas, custos:relCustos, prev:relPrev, saas:relSaaS, carteira:relCarteira, saude:relSaude, venc:relVenc, ocorr:relOcorr, impl:relImpl, uso:relUso, suporte:relSuporte, contratos:relContratos }[S.rel] || relDRE;
   const r=fn(); r.periodo = temPer ? ('Período: '+ymNome(S.per.ini)+(S.per.ini!==S.per.fim?' a '+ymNome(S.per.fim):'')) : (S.rel==='prev'?'Próximos '+S.prevN+' meses':'Posição em '+fD(hojeISO()));
   S._rel=r;
   return nav+ctl+`<div class="printhead"><h2 style="margin:0">Central GestãoPro — ${esc(r.titulo)}</h2><div class="small mut">${esc(r.periodo)} · emitido em ${fDH(new Date().toISOString())}</div></div>
@@ -1041,15 +1128,15 @@ function telaRelatorios(){ if(!S.per.ini){ S.per.fim=ymHoje(); S.per.ini=ymAdd(S
 
 /* ---- FINANCEIROS ---- */
 function relDRE(){ const meses=ymLista(S.per.ini,S.per.fim);
-  const rows=meses.map(c=>{ const fat=soma(fatDe(c),m=>m.valor), rec=soma(pagosEntre(c+'-01',ymFimISO(c)),m=>m.valor_pago), ks=custosDe(c);
+  const rows=meses.map(c=>{ const fimp=soma(fatDe(c).filter(ehImpl),m=>m.valor); const fat=soma(fatDe(c),m=>m.valor), rec=soma(pagosEntre(c+'-01',ymFimISO(c)),m=>m.valor_pago), ks=custosDe(c);
     const imp=soma(ks.filter(k=>k.categoria==='impostos'),k=>k.valor), dir=soma(ks.filter(k=>k.tenant&&k.categoria!=='impostos'),k=>k.valor), ger=soma(ks.filter(k=>!k.tenant&&k.categoria!=='impostos'),k=>k.valor), ct=imp+dir+ger;
     const fe=S.gerOk&&S.fech.some(f=>f.competencia===c);
-    return { c, fat, imp, liq:fat-imp, dir, ger, ct, res:fat-ct, marg:fat?(fat-ct)/fat:null, rec, caixa:rec-ct, fech:S.gerOk?tg(fe?'fechado':'aberto',fe?'pos':'mut'):null }; });
-  const T={}; ['fat','imp','liq','dir','ger','ct','res','rec','caixa'].forEach(k=>T[k]=soma(rows,r=>r[k])); T.marg=T.fat?T.res/T.fat:null;
+    return { c, fmen:fat-fimp, fimp, fat, imp, liq:fat-imp, dir, ger, ct, res:fat-ct, marg:fat?(fat-ct)/fat:null, rec, caixa:rec-ct, fech:S.gerOk?tg(fe?'fechado':'aberto',fe?'pos':'mut'):null }; });
+  const T={}; ['fmen','fimp','fat','imp','liq','dir','ger','ct','res','rec','caixa'].forEach(k=>T[k]=soma(rows,r=>r[k])); T.marg=T.fat?T.res/T.fat:null;
   return { titulo:'Resultado mensal (DRE simplificado)', desc:'Receita pela <b>competência</b> das mensalidades (canceladas ficam fora) menos impostos e custos lançados no mês. As duas últimas colunas mostram o <b>caixa</b>: o que entrou de fato (pela data do pagamento) menos os mesmos custos.',
     kpis:[['Receita faturada',BRL(T.fat)],['Recebido (caixa)',BRL(T.rec),'var(--pos)'],['Custos + impostos',BRL(T.ct)],['Resultado',BRL(T.res),T.res<0?'var(--neg)':'var(--pos)'],['Margem',PCT(T.marg)],['Resultado médio / mês',BRL(T.res/meses.length)]],
     blocos:[ { titulo:'Receita faturada x custos', html:barras(meses,[{nome:'Receita faturada',cor:'var(--s1)',vals:rows.map(r=>r.fat)},{nome:'Custos + impostos',cor:'var(--s2)',vals:rows.map(r=>r.ct)}]) },
-      { titulo:'Demonstrativo por mês', cols:[['c','Mês','ym'],['fat','Receita faturada','brl'],['imp','(−) Impostos','brl'],['liq','Receita líquida','brl'],['dir','(−) Custos diretos','brl'],['ger','(−) Custos gerais','brl'],['res','Resultado','brl'],['marg','Margem','pct'],['rec','Recebido (caixa)','brl'],['caixa','Saldo de caixa','brl'],['fech','Mês','tag']], rows, total:T } ] }; }
+      { titulo:'Demonstrativo por mês', cols:[['c','Mês','ym'],['fmen','Mensalidades','brl'],['fimp','Implantação','brl'],['fat','Receita faturada','brl'],['imp','(−) Impostos','brl'],['liq','Receita líquida','brl'],['dir','(−) Custos diretos','brl'],['ger','(−) Custos gerais','brl'],['res','Resultado','brl'],['marg','Margem','pct'],['rec','Recebido (caixa)','brl'],['caixa','Saldo de caixa','brl'],['fech','Mês','tag']], rows, total:T } ] }; }
 
 function relReceb(){ const lista=pagosEntre(perIni(),perFim()).sort((a,b)=>a.pago_em.localeCompare(b.pago_em));
   const rows=lista.map(m=>{ const atraso=Math.max(0,difDias(m.pago_em,m.vencimento)); return { data:m.pago_em, loja:nomeDe(m.tenant), comp:m.competencia, valor:+m.valor, pago:+m.valor_pago, dif:(+m.valor_pago)-(+m.valor), forma:formaNome(m.forma), atraso, st:atraso?tg('atraso '+atraso+'d','warn'):tg('em dia','pos') }; });
